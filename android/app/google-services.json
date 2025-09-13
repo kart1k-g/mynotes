@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "941614949914",
+    "project_id": "mynotes-flutter-kart1kg-1",
+    "storage_bucket": "mynotes-flutter-kart1kg-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941614949914:android:e2bce2ca4507c6567393a3",
+        "android_client_info": {
+          "package_name": "com.kart1kg.mynotes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeU--E-4oNnSFTRkhkijCn6RF2G53QtYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
