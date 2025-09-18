@@ -18,9 +18,12 @@ void main() {
       // home: const RegisterView(),
       // home: const LoginView(),
       home: const HomePage(),
+      // home: const NotesViewState(),
       routes: {
-        "/login/": (context) =>LoginView(),
-        "/register/": (context) =>RegisterView(),
+        "/login/": (context) => const LoginView(),
+        "/register/": (context) =>const RegisterView(),
+        "/notes/": (context) =>const NotesViewState(),
+        "/verify_email/": (context) =>const VerifyEmailView(),
 
       },
     ));
@@ -45,10 +48,11 @@ class _HomePageState extends State<HomePage> {
         switch(snapshot.connectionState){
           case ConnectionState.done:
             final user=FirebaseAuth.instance.currentUser;
-            // print(user);
+            // FirebaseAuth.instance.signOut();
+            // devtools.log(user);
             if(user!=null){
               if(user.emailVerified){
-                print("Email Verified");
+                devtools.log("Email Verified");
                 return NotesViewState();
               }else{
                 return const VerifyEmailView();

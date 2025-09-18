@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mynotes/firebase_options.dart';
-
+import 'dart:developer' as devtools show log;
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
 
@@ -73,17 +73,25 @@ class _LoginViewState extends State<LoginView> {
                           email: email,
                           password: password
                         );
-                        print(userCredential);
+                        final isEmailVerified=FirebaseAuth.instance.currentUser?.emailVerified??false;
+                        devtools.log(isEmailVerified.toString());
+                        devtools.log(userCredential.toString());
+                        if(isEmailVerified){
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            "/notes/",
+                            (_)=> false,
+                          );
+                        }
                       }on FirebaseAuthException catch(e){
-                        print("hi");
+                        devtools.log("hi");
                         switch(e.code){
-                          case "invalid-credential": print("invalid-credential");
-                          default : print(e.code);
+                          case "invalid-credential": devtools.log("invalid-credential");
+                          default : devtools.log(e.code);
                         }
                       }
 
 
-                      // print(userCredential);
+                      // devtools.log(userCredential);
                     }, 
                     child: const Text("Login")),
 
@@ -93,7 +101,7 @@ class _LoginViewState extends State<LoginView> {
                       (route)=> false,
                     );
                   },
-                  child: const Text("Register here"))
+                  child: const Text("Register instead"))
                 ],
               );
             default:

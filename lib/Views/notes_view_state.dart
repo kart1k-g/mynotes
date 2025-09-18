@@ -24,7 +24,6 @@ class _NotesViewStateState extends State<NotesViewState> {
           actions: [
             PopupMenuButton<MenuAction>(
               onSelected: (value)async{
-                // print(value);
                 // devtools.log(value.toString() );
                 switch(value){
                   case MenuAction.logout:
