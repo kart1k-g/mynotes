@@ -1,8 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/firebase_options.dart';
 import 'dart:developer' as devtools show log;
+
+import 'package:mynotes/utilites/show_error_view.dart';
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
 
@@ -78,26 +81,28 @@ class _LoginViewState extends State<LoginView> {
                         devtools.log(userCredential.toString());
                         if(isEmailVerified){
                           Navigator.of(context).pushNamedAndRemoveUntil(
-                            "/notes/",
+                            notesRoute,
                             (_)=> false,
                           );
                         }
                       }on FirebaseAuthException catch(e){
                         devtools.log("hi");
                         switch(e.code){
-                          case "invalid-credential": devtools.log("invalid-credential");
-                          default : devtools.log(e.code);
+                          case "invalid-credential":
+                            await showErrorDialog(context, "Invalid Credentials");
+                          default :
+                            await showErrorDialog(context, e.code.toString());
                         }
+                      }catch(e){
+                        await showErrorDialog(context, e.toString());
                       }
-
-
                       // devtools.log(userCredential);
                     }, 
                     child: const Text("Login")),
 
                   TextButton(onPressed: (){
                     Navigator.of(context).pushNamedAndRemoveUntil(
-                      "/register/", 
+                      registerRoute, 
                       (route)=> false,
                     );
                   },

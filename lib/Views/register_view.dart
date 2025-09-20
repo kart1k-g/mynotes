@@ -1,8 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/firebase_options.dart';
 import 'dart:developer' as devtools;
+
+import 'package:mynotes/utilites/show_error_view.dart';
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
 
@@ -75,21 +78,22 @@ class _RegisterViewState extends State<RegisterView> {
                         );
                         devtools.log(userCredential.toString());
                         Navigator.of(context).pushNamedAndRemoveUntil(
-                         "/verify_email/",
+                         verificationRoute,
                          (_)=> false,
                         );
                       }on FirebaseAuthException catch(e){
                         devtools.log("Exception");
                         if(e.code=="weak-password"){
-                          devtools.log("weak-password");
+                          await showErrorDialog(context, "Weak password");
                         }else if(e.code=="email-already-in-use"){
-                          devtools.log("email-already-in-use");
+                          await showErrorDialog(context, "Email is already registered. Try logging in");
                         }else if(e.code=="invalid-email"){
-                          devtools.log("invaild-email");
+                          await showErrorDialog(context, "Enter a valid email");
                         }else{
-                          devtools.log(e.code);
+                          await showErrorDialog(context, e.code.toString());
                         }
-                        
+                      }catch(e){
+                        await showErrorDialog(context, e.toString());
                       }
                     }, 
                     child: const Text("Register")),
@@ -97,8 +101,8 @@ class _RegisterViewState extends State<RegisterView> {
                   TextButton(
                     onPressed: (){
                       Navigator.of(context).pushNamedAndRemoveUntil(
-                        "/login/",
-                        (route)=> false
+                        loginRoute,
+                        (route)=> false,
                       );
                     },
                     child: const Text("Login instead"),

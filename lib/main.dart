@@ -5,6 +5,7 @@ import 'package:mynotes/Views/login_view.dart';
 import 'package:mynotes/Views/notes_view_state.dart';
 import 'package:mynotes/Views/register_view.dart';
 import 'package:mynotes/Views/verify_email_view.dart';
+import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/firebase_options.dart';
 import 'dart:developer' as devtools show log;
 void main() {
@@ -20,12 +21,12 @@ void main() {
       home: const HomePage(),
       // home: const NotesViewState(),
       routes: {
-        "/login/": (context) => const LoginView(),
-        "/register/": (context) =>const RegisterView(),
-        "/notes/": (context) =>const NotesViewState(),
-        "/verify_email/": (context) =>const VerifyEmailView(),
+        loginRoute: (context) => const LoginView(),
+        registerRoute: (context) =>const RegisterView(),
+        notesRoute: (context) =>const NotesViewState(),
+        verificationRoute: (context) =>const VerifyEmailView(),
 
-      },
+      }, 
     ));
 }
 
@@ -51,12 +52,7 @@ class _HomePageState extends State<HomePage> {
             // FirebaseAuth.instance.signOut();
             // devtools.log(user);
             if(user!=null){
-              if(user.emailVerified){
-                devtools.log("Email Verified");
-                return NotesViewState();
-              }else{
-                return const VerifyEmailView();
-              }
+              return NotesViewState();
             }else{
               return const LoginView();
             }

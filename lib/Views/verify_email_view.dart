@@ -2,6 +2,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools;
+
+import 'package:mynotes/constants/routes.dart';
 class VerifyEmailView extends StatefulWidget {
   const VerifyEmailView({super.key});
 
@@ -35,7 +37,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
           devtools.log(isEmailVerified.toString());
           if(isEmailVerified){
             Navigator.of(context).pushNamedAndRemoveUntil(
-              "/notes/",
+              notesRoute,
               (_)=> false,
             );
           }
@@ -46,7 +48,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
           //until user is verified we don't want it in the db
           FirebaseAuth.instance.currentUser?.delete();
           Navigator.of(context).pushNamedAndRemoveUntil(
-            "/login/",
+            loginRoute,
           (_)=>false,);
         }, child: const Text("Edit email")),
       ],),
