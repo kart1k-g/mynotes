@@ -11,23 +11,22 @@ class VerifyEmailView extends StatefulWidget {
   State<VerifyEmailView> createState() => _VerifyEmailViewState();
 }
 
-class _VerifyEmailViewState extends State<VerifyEmailView> {
+class _VerifyEmailViewState extends State<VerifyEmailView> with WidgetsBindingObserver{
+  bool _isEmailVerified=false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Email Verification"), backgroundColor: Colors.deepPurple,),
       body: Column(children: [
-        Text("Verify your email first"),
-        
-        Text(FirebaseAuth.instance.currentUser+""),
-        
+        Text("Email verifiaction sent on ${FirebaseAuth.instance.currentUser?.email}"),
+          
         TextButton(
           onPressed: ()async{
               final user=FirebaseAuth.instance.currentUser;
               await user?.sendEmailVerification().then((_)=>{
               });
           },
-          child: const Text("Send email verification")
+          child: const Text("Resend email verification")
         ),
         
         TextButton(onPressed: ()async{
@@ -36,6 +35,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
           final isEmailVerified=user?.emailVerified??false;
           devtools.log(isEmailVerified.toString());
           if(isEmailVerified){
+            _isEmailVerified=true;
             Navigator.of(context).pushNamedAndRemoveUntil(
               notesRoute,
               (_)=> false,
@@ -50,9 +50,17 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
           Navigator.of(context).pushNamedAndRemoveUntil(
             loginRoute,
           (_)=>false,);
-        }, child: const Text("Edit email")),
+        }, child: const Text("Use another account")),
       ],),
     );
+  }
+  @override
+  void dispose() {
+    if(!_isEmailVerified){
+      FirebaseAuth.instance.currentUser?.delete();
+      devtools.log("deleted");
+    }
+    super.dispose();
   }
 }
 

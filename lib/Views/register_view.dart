@@ -77,10 +77,18 @@ class _RegisterViewState extends State<RegisterView> {
                           password: password
                         );
                         devtools.log(userCredential.toString());
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                         verificationRoute,
-                         (_)=> false,
+                        final user=FirebaseAuth.instance.currentUser;
+                        await user?.sendEmailVerification();
+
+                        Navigator.of(context).pushNamed(
+                         verificationRoute
                         );
+                        // .then((onValue)async{
+                        //   if(!(user?.emailVerified??false)){
+                        //     await user?.delete();
+                        //     devtools.log("deleted");
+                        //   }
+                        // });
                       }on FirebaseAuthException catch(e){
                         devtools.log("Exception");
                         if(e.code=="weak-password"){

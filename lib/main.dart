@@ -52,7 +52,11 @@ class _HomePageState extends State<HomePage> {
             // FirebaseAuth.instance.signOut();
             // devtools.log(user);
             if(user!=null){
-              return NotesViewState();
+              if(user.emailVerified){
+                return const NotesViewState();
+              }else{
+                return const VerifyEmailView();
+              }
             }else{
               return const LoginView();
             }

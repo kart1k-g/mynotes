@@ -84,6 +84,12 @@ class _LoginViewState extends State<LoginView> {
                             notesRoute,
                             (_)=> false,
                           );
+                        }else{
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            verificationRoute,
+                            (_)=> false,
+                          );
+
                         }
                       }on FirebaseAuthException catch(e){
                         devtools.log("hi");
