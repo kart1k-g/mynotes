@@ -1,6 +1,8 @@
 // login
 class IncorrectCredentialsAuthException implements Exception{}
 
+class UserNotFoundAuthException implements Exception{}
+
 // register
 class EmailAlreadyInUseAuthException implements Exception{}
 
