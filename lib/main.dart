@@ -8,7 +8,6 @@ import 'package:mynotes/constants/routes.dart';
 import 'dart:developer' as devtools show log;
 
 import 'package:mynotes/services/auth/auth_service.dart';
-import 'package:path/path.dart';
 void main() {
   // runApp(const MyApp());
   WidgetsFlutterBinding.ensureInitialized();

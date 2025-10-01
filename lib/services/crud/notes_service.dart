@@ -1,6 +1,4 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
 import 'package:mynotes/services/crud/crud_exceptions.dart';
 import 'package:path/path.dart' show join;
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +8,7 @@ const idCol = "id";
 const emailCol = "email";
 const userIdCol = "user_id";
 const textCol = "text";
-const isSyncedWithCloudCol = "is_sysnced_with_cloud";
+const isSyncedWithCloudCol = "is_synced_with_cloud";
 const dbName = "notes.db";
 const userTable = "user";
 const noteTable = "note";
@@ -20,7 +18,7 @@ const createUserTable =
   CREATE TABLE IF NOT EXISTS "$userTable"(
     "id"	INTEGER NOT NULL,
     "email"	TEXT NOT NULL UNIQUE,
-    PRIMARY KEY("id" AUTOINCREMENT
+    PRIMARY KEY("id" AUTOINCREMENT)
   );''';
 
 const createNoteTable =
@@ -38,8 +36,20 @@ class NotesService {
   Database? _db;
   List<DatabaseNote> _notes=[];
 
-  final _notesStreamController=StreamController<List<DatabaseNote>>.broadcast();
+  late final StreamController<List<DatabaseNote>> _notesStreamController;
   Stream<List<DatabaseNote>> get allNotes=>_notesStreamController.stream;
+
+
+  //creating a singleton
+  static final NotesService _shared=NotesService._sharedInstance();
+  NotesService._sharedInstance(){
+    _notesStreamController=StreamController<List<DatabaseNote>>.broadcast(
+      onListen: (){
+        _notesStreamController.sink.add(_notes);
+      },
+    );
+  }
+  factory NotesService()=> _shared;
 
   Future<DatabaseUser> getOrCreateUser({required String email})async{
     try{
@@ -52,12 +62,6 @@ class NotesService {
       rethrow;
     }
   }
-
-  //creating a singleton
-  static final NotesService _shared=NotesService._sharedInstance();
-  NotesService._sharedInstance();
-  factory NotesService()=> _shared;
-
 
   Future<void> _cacheNotes()async{
     final allNotes=await getAllNote();
@@ -74,13 +78,14 @@ class NotesService {
     final updateCount=await db.update(noteTable, {
       textCol: text,
       isSyncedWithCloudCol: 0,
-    });
+    }, whereArgs: [note.id], where: "id = ?");
 
     if(updateCount==0){
       throw CouldNotUpdateNote();
     }else{
       final updatedNote=await getNote(id: note.id);
       _notes.removeWhere((note)=>note.id==updatedNote.id);
+      _notes.add(updatedNote);
       _notesStreamController.add(_notes);
       return updatedNote;
     }
@@ -159,7 +164,7 @@ class NotesService {
 
     final note = DatabaseNote(
       userId: owner.id,
-      id: owner.id,
+      id: noteId,
       isSyncedWithCloud: true,
       text: text,
     );
@@ -235,15 +240,16 @@ class NotesService {
     if (_db != null) throw DatabaseAlreadyOpenException();
 
     try {
-      final docsPath = await getApplicationCacheDirectory();
+      final docsPath = await getApplicationDocumentsDirectory();
       final dbPath = join(docsPath.path, dbName);
       final db = await openDatabase(dbPath);
       _db = db;
-
+      // await db.delete(userTable);
+      // await db.delete(noteTable);
       await db.execute(createUserTable);
       await db.execute(createNoteTable);
       await _cacheNotes();
-    } on MissingPlatformDirectoryException catch (e) {
+    } on MissingPlatformDirectoryException catch (_) {
       throw UnableToGetDocumentDirectory();
     }
   }
@@ -302,7 +308,7 @@ class DatabaseNote {
 
   @override
   String toString() {
-    return "Note, ID=$id, userID=$userId, isSysncedWithCloud=$isSyncedWithCloud";
+    return "Note, ID=$id, userID=$userId, isSysncedWithCloud=$isSyncedWithCloud, text=$text";
   }
 
   @override

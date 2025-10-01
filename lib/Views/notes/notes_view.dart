@@ -1,10 +1,11 @@
 import 'dart:developer' as devtools show log;
 import 'package:flutter/material.dart';
+import 'package:mynotes/Views/notes/notes_list_view.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/enums/menu_actions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
 import 'package:mynotes/services/crud/notes_service.dart';
-import 'package:mynotes/utilites/show_logout_view.dart';
+import 'package:mynotes/utilites/logout_dialog.dart';
 
 class NotesViewState extends StatefulWidget {
   const NotesViewState({super.key});
@@ -14,7 +15,7 @@ class NotesViewState extends StatefulWidget {
 }
 
 class _NotesViewStateState extends State<NotesViewState> {
-  late final _notesService;
+  late final NotesService _notesService;
   //we are sure that email won't null if we reach this page
   String get userEmail => AuthService.firebase().currentUser!.email!;
 
@@ -22,12 +23,6 @@ class _NotesViewStateState extends State<NotesViewState> {
   void initState() {
     _notesService = NotesService();
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    _notesService.close();
-    super.dispose();
   }
 
   @override
@@ -49,7 +44,7 @@ class _NotesViewStateState extends State<NotesViewState> {
               // devtools.log(value.toString() );
               switch (value) {
                 case MenuAction.logout:
-                  final shouldLogOut = await showLogOutDailog(context);
+                  final shouldLogOut = await showLogOutDialog(context: context);
                   devtools.log(shouldLogOut.toString());
                   if (shouldLogOut) {
                     AuthService.firebase().logOutUser();
@@ -79,8 +74,19 @@ class _NotesViewStateState extends State<NotesViewState> {
                 stream: _notesService.allNotes,
                 builder: (context, snapshot) {
                   switch (snapshot.connectionState) {
+                    case ConnectionState.active:
                     case ConnectionState.waiting:
-                      return const Text("Waiting for notes");
+                      if (snapshot.hasData) {
+                        final allNotes = snapshot.data as List<DatabaseNote>;
+                        return NotesListView(
+                          notes: allNotes,
+                          onDeleteNote: (note) async {
+                            await _notesService.deleteNote(id: note.id);
+                          },
+                        );
+                      } else {
+                        return const CircularProgressIndicator();
+                      }
                     default:
                       return const CircularProgressIndicator();
                   }
