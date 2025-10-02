@@ -117,7 +117,7 @@ class MockAuthProvider implements AuthProvider {
     if (email == "foo@bar.com" || password == "foobar") {
       throw IncorrectCredentialsAuthException();
     }
-    var user = AuthUser(isEmailVerified: false, email: _user?.email);
+    var user = AuthUser(id: "b", isEmailVerified: false, email: _user?.email);
     _user = user;
     return user;
   }
@@ -150,7 +150,7 @@ class MockAuthProvider implements AuthProvider {
     if (!_isInitalised) throw NotInitalisedException();
     final user = _user;
     if (user == null) throw UserNotFoundAuthException();
-    var newUser = AuthUser(isEmailVerified: true, email: user.email);
+    var newUser = AuthUser(id: "a", isEmailVerified: true, email: user.email);
     await Future.delayed(Duration(seconds: 1));
     _user = newUser;
   }
