@@ -6,7 +6,7 @@ import 'package:mynotes/enums/menu_actions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 import 'package:mynotes/services/cloud/firebase_cloud_storage.dart';
-import 'package:mynotes/utilites/logout_dialog.dart';
+import 'package:mynotes/utilites/dialogs/logout_dialog.dart';
 
 class NotesViewState extends StatefulWidget {
   const NotesViewState({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
-import 'package:mynotes/utilites/delete_dialog.dart';
+import 'package:mynotes/utilites/dialogs/delete_dialog.dart';
 typedef NoteCallback = void Function(CloudNote note);
 
 class NotesListView extends StatelessWidget {
