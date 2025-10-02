@@ -10,8 +10,17 @@ class FirebaseCloudStorage {
 
   final notes = FirebaseFirestore.instance.collection("notes");
 
-  void createNewNote({required String ownerUserId}) async {
-    await notes.add({textFieldName: "", ownerUserIdFieldName: ownerUserId});
+  Future<CloudNote> createNewNote({required String ownerUserId}) async {
+    final document = await notes.add({
+      textFieldName: "",
+      ownerUserIdFieldName: ownerUserId,
+    });
+    final fetchedNote = await document.get();
+    return CloudNote(
+      documentId: fetchedNote.id,
+      ownerUserId: ownerUserId,
+      text: "",
+    );
   }
 
   Future<Iterable<CloudNote>> getNotes({required String ownerUserId}) async {
@@ -21,11 +30,7 @@ class FirebaseCloudStorage {
           .get()
           .then(
             (value) => value.docs.map((doc) {
-              return CloudNote(
-                documentId: doc.id,
-                ownerUserId: doc.data()[ownerUserIdFieldName],
-                text: doc.data()[textFieldName],
-              );
+              return CloudNote.fromSnapshot(doc);
             }),
           );
     } catch (e) {
@@ -42,7 +47,7 @@ class FirebaseCloudStorage {
 
   Future<void> updateNote({
     required String documentId,
-    required String text,
+    required String text
   }) async {
     try {
       await notes.doc(documentId).update({textFieldName: text});
@@ -52,9 +57,9 @@ class FirebaseCloudStorage {
   }
 
   Future<void> deleteNote({required String documentId}) async {
-    try{
+    try {
       notes.doc(documentId).delete();
-    }catch (e){
+    } catch (e) {
       throw CouldNotDeleteNoteException();
     }
   }
