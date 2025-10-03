@@ -1,9 +1,12 @@
 import 'dart:developer' as devtools show log;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/Views/notes/notes_list_view.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/enums/menu_actions.dart';
 import 'package:mynotes/services/auth/auth_service.dart';
+import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
+import 'package:mynotes/services/auth/bloc/auth_events.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 import 'package:mynotes/services/cloud/firebase_cloud_storage.dart';
 import 'package:mynotes/utilites/dialogs/logout_dialog.dart';
@@ -17,7 +20,7 @@ class NotesViewState extends StatefulWidget {
 
 class _NotesViewStateState extends State<NotesViewState> {
   late final FirebaseCloudStorage _notesService;
-  String get userId=> AuthService.firebase().currentUser!.id;
+  String get userId => AuthService.firebase().currentUser!.id;
 
   @override
   void initState() {
@@ -47,10 +50,7 @@ class _NotesViewStateState extends State<NotesViewState> {
                   final shouldLogOut = await showLogOutDialog(context: context);
                   devtools.log(shouldLogOut.toString());
                   if (shouldLogOut) {
-                    AuthService.firebase().logOutUser();
-                    Navigator.of(
-                      context,
-                    ).pushNamedAndRemoveUntil(loginRoute, (_) => false);
+                    context.read<AuthBloc>().add(AuthEventLogOut());
                   }
               }
             },
@@ -79,10 +79,9 @@ class _NotesViewStateState extends State<NotesViewState> {
                     await _notesService.deleteNote(documentId: note.documentId);
                   },
                   onTap: (note) {
-                    Navigator.of(context).pushNamed(
-                      createOrUpdateNoteRoute,
-                      arguments: note,
-                    );
+                    Navigator.of(
+                      context,
+                    ).pushNamed(createOrUpdateNoteRoute, arguments: note);
                   },
                 );
               } else {
@@ -92,7 +91,7 @@ class _NotesViewStateState extends State<NotesViewState> {
               return const CircularProgressIndicator();
           }
         },
-      )
+      ),
     );
   }
 }
