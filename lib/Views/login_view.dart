@@ -1,14 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mynotes/constants/routes.dart';
-import 'package:mynotes/services/auth/auth_exceptions.dart';
-import 'package:mynotes/services/auth/auth_service.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
-import 'package:mynotes/services/auth/bloc/auth_events.dart';
-import 'package:mynotes/utilites/dialogs/error_dialog.dart';
-import 'dart:developer' as devtools show log;
 
-// import 'package:mynotes/utilites/show_error_view.dart';
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
 
@@ -21,8 +14,8 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   void initState() {
-    _email=TextEditingController();
-    _password=TextEditingController();
+    _email = TextEditingController();
+    _password = TextEditingController();
     super.initState();
   }
 
@@ -35,56 +28,55 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Login", style: TextStyle(color: Colors.white),),
-        backgroundColor: Colors.deepPurple,
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) async{
+        
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Login", style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.deepPurple,
+        ),
+        body: Column(
+          children: [
+            TextField(
+              controller: _email,
+              autocorrect: false,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(hintText: "Email"),
+            ),
+
+            TextField(
+              controller: _password,
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(hintText: "Password"),
+            ),
+
+            TextButton(
+              onPressed: () async {
+                final email = _email.text;
+                final password = _password.text;
+
+                context.read<AuthBloc>().add(
+                  AuthLoginRequested(email: email, password: password),
+                );
+              },
+              child: const Text("Login"),
+            ),
+
+            TextButton(
+              onPressed: () {
+                context.read<AuthBloc>().add(
+                  AuthLogOutRequested(displayRegisterView: true),
+                );
+              },
+              child: const Text("Register instead"),
+            ),
+          ],
+        ),
       ),
-      body: Column(
-        children: [
-          TextField(
-            controller: _email,
-            autocorrect: false,
-            keyboardType: TextInputType.emailAddress ,
-            decoration: InputDecoration(
-              hintText: "Email"
-            ),
-          ),
-          
-          TextField(
-            controller: _password,
-            obscureText: true,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: InputDecoration(
-              hintText: "Password"
-            ),
-          ),
-          
-          TextButton(
-            onPressed: ()async {
-              final email=_email.text;
-              final password=_password.text;
-
-              try{
-                context.read<AuthBloc>().add(AuthEventLogIn(email, password));
-              }on IncorrectCredentialsAuthException{
-                await showErrorDialog(context: context, text: "Invalid Credentials");
-              }on GenericAuthException{
-                await showErrorDialog(context: context, text: "Authentication Error");
-              }
-            }, 
-            child: const Text("Login")),
-
-          TextButton(onPressed: (){
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              registerRoute, 
-              (route)=> false,
-            );
-          },
-          child: const Text("Register instead"))
-        ],
-      )
     );
   }
 }

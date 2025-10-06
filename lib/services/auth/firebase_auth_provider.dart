@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, FirebaseAuthException;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mynotes/firebase_options.dart';
@@ -37,7 +39,7 @@ class FirebaseAuthProvider implements AuthProvider{
         throw UserNotLoggedInAuthException();
       }
     }on FirebaseAuthException catch(e){
-      if(e.code=="invalid_credential"){
+      if(e.code=="invalid-credential"){
         throw IncorrectCredentialsAuthException();
       }else{
         throw GenericAuthException();
