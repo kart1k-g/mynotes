@@ -96,7 +96,7 @@ class MockAuthProvider implements AuthProvider {
   Future<void> deleteUser() async {
     if (!_isInitalised) throw NotInitalisedException();
     final user = _user;
-    if (user == null) throw UserNotFoundAuthException();
+    if (user == null) throw UserNotLoggedInAuthException();
     _user = null;
     await Future.delayed(Duration(seconds: 1));
   }
@@ -125,7 +125,7 @@ class MockAuthProvider implements AuthProvider {
   @override
   Future<void> logOutUser() async {
     if (!_isInitalised) throw NotInitalisedException();
-    if (_user == null) throw UserNotFoundAuthException();
+    if (_user == null) throw UserNotLoggedInAuthException();
     await Future.delayed(Duration(seconds: 1));
     _user = null;
   }
@@ -149,7 +149,7 @@ class MockAuthProvider implements AuthProvider {
   Future<void> sendEmailVerification() async {
     if (!_isInitalised) throw NotInitalisedException();
     final user = _user;
-    if (user == null) throw UserNotFoundAuthException();
+    if (user == null) throw UserNotLoggedInAuthException();
     var newUser = AuthUser(id: "a", isEmailVerified: true, email: user.email);
     await Future.delayed(Duration(seconds: 1));
     _user = newUser;
@@ -159,7 +159,7 @@ class MockAuthProvider implements AuthProvider {
   Future<void> resetPassword({required String email}) async{
     if (!_isInitalised) throw NotInitalisedException();
     final user = _user;
-    if (user == null) throw UserNotFoundAuthException();
+    if (user == null) throw UserNotLoggedInAuthException();
     var newUser = AuthUser(id: "a", isEmailVerified: true, email: user.email);
     await Future.delayed(Duration(seconds: 1));
     _user = newUser;
