@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
@@ -10,7 +12,7 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final FirebaseAuthProvider provider;
   AuthBloc({required this.provider})
-    : super(AuthUninitalized(isLoading: true)) {
+    : super(AuthUninitalized()) {
     on<AuthInitalize>(_onAuthInitalize);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthRegisterRequested>(_onAuthRegisterRequested);
@@ -23,14 +25,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   void _onAuthInitalize(AuthInitalize event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
     await provider.initalize();
     final user = provider.currentUser;
-    // provider.deleteUser();
     if (user != null) {
       if (user.isEmailVerified) {
         return emit(AuthLoggedIn(user: user));
       } else {
-        emit(AuthLoading());
         await provider.sendEmailVerification();
         return emit(
           AuthLoggedOut(exception: null, isRegistering: false, user: user),
@@ -47,7 +48,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginRequested event,
     Emitter<AuthState> state,
   ) async {
-    emit(AuthLoading());
+    emit(AuthLoading(text: "Verifying credentials"));
     try {
       final user = await provider.logInUser(
         email: event.email,
@@ -67,7 +68,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRegisterRequested event,
     Emitter<AuthState> state,
   ) async {
-    emit(AuthLoading());
+    emit(AuthLoading(text: "Registering"));
     try {
       final user = await provider.registerUser(
         email: event.email,
@@ -85,10 +86,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthEmailVerificationRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(AuthLoading(text: "Sending email verification link"));
     try {
-      await provider.sendEmailVerification();
-      return emit(state);
+      await provider.sendEmailVerification().timeout(const Duration(seconds: 5));
+      return emit(
+        AuthLoggedOut(
+          exception: null,
+          isRegistering: false,
+          user: provider.currentUser,
+        ),
+      );
+    }on TimeoutException {
+      return emit(
+        AuthLoggedOut(
+          exception: Exception("Error sending email verification!!"),
+          isRegistering: false,
+          user: provider.currentUser,
+        ),
+      );
     } on Exception catch (e) {
       return emit(
         AuthLoggedOut(
@@ -106,15 +121,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthConfirmEmailVerificationRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(AuthLoading(text: "Confirming"));
     try {
-      await provider.reload();
+      await provider.reload().timeout(const Duration(seconds: 5));
       final user = provider.currentUser;
       if (user?.isEmailVerified ?? false) {
         return emit(AuthLoggedIn(user: user!));
       }else{
-        return emit(state);
+        return emit(
+          AuthLoggedOut(
+            exception: Exception("Retry"),
+            isRegistering: false,
+            user: provider.currentUser,
+          ),
+        );
       }
+    } on TimeoutException{
+      return emit(
+        AuthLoggedOut(
+          exception: Exception("Retry"),
+          isRegistering: false,
+          user: provider.currentUser,
+        ),
+      );
     } on Exception catch (e) {
       return emit(
         AuthLoggedOut(
@@ -132,7 +161,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogOutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(AuthLoading());
+    emit(AuthLoading(text: "Logging you out"));
     try {
       final user = provider.currentUser;
       if (user != null) {

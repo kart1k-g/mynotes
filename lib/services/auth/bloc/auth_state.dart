@@ -4,12 +4,14 @@ part of 'auth_bloc.dart';
 sealed class AuthState {}
 
 final class AuthUninitalized extends AuthState {
-  final bool isLoading;
 
-  AuthUninitalized({required this.isLoading});
+  AuthUninitalized();
 }
 
-final class AuthLoading extends AuthState {}
+final class AuthLoading extends AuthState {
+  final String text;
+  AuthLoading({this.text="Loading..."});
+}
 
 final class AuthLoggedOut extends AuthState with EquatableMixin {
   final Exception? exception;
