@@ -38,3 +38,8 @@ final class AuthDeleteUserRequested extends AuthEvent with EquatableMixin{
   @override
   List<Object?> get props => [displayRegisterView];
 }
+
+final class AuthResetPasswordRequested extends AuthEvent{
+  final String? email;
+  AuthResetPasswordRequested({required this.email});
+}

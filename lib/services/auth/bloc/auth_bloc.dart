@@ -11,8 +11,7 @@ part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final FirebaseAuthProvider provider;
-  AuthBloc({required this.provider})
-    : super(AuthUninitalized()) {
+  AuthBloc({required this.provider}) : super(AuthUninitalized()) {
     on<AuthInitalize>(_onAuthInitalize);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthRegisterRequested>(_onAuthRegisterRequested);
@@ -22,6 +21,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
     on<AuthLogOutRequested>(_onAuthLogOutRequested);
     on<AuthDeleteUserRequested>(_onAuthDeleteUserRequested);
+    on<AuthResetPasswordRequested>(_onAuthResetPasswordRequested);
   }
 
   void _onAuthInitalize(AuthInitalize event, Emitter<AuthState> emit) async {
@@ -88,7 +88,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading(text: "Sending email verification link"));
     try {
-      await provider.sendEmailVerification().timeout(const Duration(seconds: 5));
+      await provider.sendEmailVerification().timeout(
+        const Duration(seconds: 5),
+      );
       return emit(
         AuthLoggedOut(
           exception: null,
@@ -96,7 +98,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           user: provider.currentUser,
         ),
       );
-    }on TimeoutException {
+    } on TimeoutException {
       return emit(
         AuthLoggedOut(
           exception: Exception("Error sending email verification!!"),
@@ -127,7 +129,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = provider.currentUser;
       if (user?.isEmailVerified ?? false) {
         return emit(AuthLoggedIn(user: user!));
-      }else{
+      } else {
         return emit(
           AuthLoggedOut(
             exception: Exception("Retry"),
@@ -136,7 +138,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           ),
         );
       }
-    } on TimeoutException{
+    } on TimeoutException {
       return emit(
         AuthLoggedOut(
           exception: Exception("Retry"),
@@ -214,6 +216,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     } catch (e) {
       rethrow;
+    }
+  }
+
+  void _onAuthResetPasswordRequested(
+    AuthResetPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async{
+    if(event.email==null){//user clicks to go to the reset password view
+      return emit(AuthResetingPassword(exception: null));
+    }else{
+      emit(AuthLoading(text: "Sending the link to reset password"));
+      try{
+        await provider.resetPassword(email: event.email!);
+        emit(AuthResetingPassword(exception: null, haveSentEmail: true));
+      }on Exception catch(e){
+        return emit(AuthResetingPassword(exception: e));
+      }catch(e){
+        rethrow;
+      }
     }
   }
 }

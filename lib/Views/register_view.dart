@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
+
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
 
@@ -28,10 +29,10 @@ class _RegisterViewState extends State<RegisterView> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) async{
+      listener: (context, state) async {
         // if(state is AuthLoggedOut){
         //   final exception = state.exception;
-          
+
         // }
       },
       child: Scaffold(
@@ -39,43 +40,60 @@ class _RegisterViewState extends State<RegisterView> {
           title: const Text("Register", style: TextStyle(color: Colors.white)),
           backgroundColor: Colors.deepPurple,
         ),
-        body: Column(
-          children: [
-            TextField(
-              controller: _email,
-              autocorrect: false,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(hintText: "Email"),
-            ),
+        body: Padding(
+          padding: const EdgeInsetsGeometry.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Share your details"),
 
-            TextField(
-              controller: _password,
-              obscureText: true,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(hintText: "Password"),
-            ),
+              const SizedBox(height: 10,),
 
-            TextButton(
-              onPressed: () async {
-                final email = _email.text;
-                final password = _password.text;
-                context.read<AuthBloc>().add(
-                  AuthRegisterRequested(email: email, password: password),
-                );
-              },
-              child: const Text("Register"),
-            ),
+              TextField(
+                controller: _email,
+                autocorrect: false,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(hintText: "Email"),
+              ),
 
-            TextButton(
-              onPressed: () {
-                context.read<AuthBloc>().add(
-                  AuthLogOutRequested(displayRegisterView: false),
-                );
-              },
-              child: const Text("Login instead"),
-            ),
-          ],
+              TextField(
+                controller: _password,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(hintText: "Password"),
+              ),
+
+              Center(
+                child: Column(
+                  children: [
+                    TextButton(
+                      onPressed: () async {
+                        final email = _email.text;
+                        final password = _password.text;
+                        context.read<AuthBloc>().add(
+                          AuthRegisterRequested(
+                            email: email,
+                            password: password,
+                          ),
+                        );
+                      },
+                      child: const Text("Register"),
+                    ),
+
+                    TextButton(
+                      onPressed: () {
+                        context.read<AuthBloc>().add(
+                          AuthLogOutRequested(displayRegisterView: false),
+                        );
+                      },
+                      child: const Text("Login instead"),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

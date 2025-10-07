@@ -27,41 +27,46 @@ class _VerifyEmailViewState extends State<VerifyEmailView>
             title: const Text("Email Verification"),
             backgroundColor: Colors.deepPurple,
           ),
-          body: Column(
-            children: [
-              Text(
-                "Email verifiaction sent on $email",
-              ),
-    
-              TextButton(
-                onPressed: (){
-                  context.read<AuthBloc>().add(AuthEmailVerificationRequested());
-                },
-                child: const Text("Resend email verification"),
-              ),
-    
-              TextButton(
-                onPressed: () {
-                  context.read<AuthBloc>().add(
-                    AuthConfirmEmailVerificationRequested(),
-                  );
-                },
-                child: const Text("Email verified"),
-              ),
-    
-              TextButton(
-                onPressed: () {
-                  //until user is verified we don't want it in the db
-                  context.read<AuthBloc>().add(
-                    AuthDeleteUserRequested(displayRegisterView: false),
-                  );
-                  context.read<AuthBloc>().add(
-                    AuthLogOutRequested(displayRegisterView: true),
-                  );
-                },
-                child: const Text("Use another account"),
-              ),
-            ],
+          body: Padding(
+            padding: const EdgeInsetsGeometry.all(16.0),
+            child: Column(
+              children: [
+                Text(
+                  "Email verifiaction sent on $email",
+                ),
+                
+                const SizedBox(height: 10,),
+                
+                TextButton(
+                  onPressed: (){
+                    context.read<AuthBloc>().add(AuthEmailVerificationRequested());
+                  },
+                  child: const Text("Resend email verification"),
+                ),
+                
+                TextButton(
+                  onPressed: () {
+                    context.read<AuthBloc>().add(
+                      AuthConfirmEmailVerificationRequested(),
+                    );
+                  },
+                  child: const Text("Email verified"),
+                ),
+                
+                TextButton(
+                  onPressed: () {
+                    //until user is verified we don't want it in the db
+                    context.read<AuthBloc>().add(
+                      AuthDeleteUserRequested(displayRegisterView: false),
+                    );
+                    context.read<AuthBloc>().add(
+                      AuthLogOutRequested(displayRegisterView: true),
+                    );
+                  },
+                  child: const Text("Use another account"),
+                ),
+              ],
+            ),
           ),
         );
       },

@@ -31,3 +31,12 @@ final class AuthLoggedIn extends AuthState {
   final AuthUser user;
   AuthLoggedIn({required this.user});
 }
+
+final class AuthResetingPassword extends AuthState with EquatableMixin{
+  final Exception? exception;
+  final bool haveSentEmail;
+  AuthResetingPassword({required this.exception, this.haveSentEmail=false});
+
+  @override
+  List<Object?> get props => [exception, haveSentEmail];
+}
