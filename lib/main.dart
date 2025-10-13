@@ -5,11 +5,11 @@ import 'package:mynotes/home_page_view.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/services/auth/firebase_auth_provider.dart';
-import 'dart:developer' as devtools show log;
+// import 'package:mynotes/splash_animation.dart';
+// import 'dart:developer' as devtools show log;
 
 void main() {
-  // runApp(const MyApp());
-  Bloc.observer = MyBlocObserver();
+  // Bloc.observer = MyBlocObserver();
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     RepositoryProvider(
@@ -19,12 +19,13 @@ void main() {
             AuthBloc(provider: context.read<FirebaseAuthProvider>())
               ..add(AuthInitalize()),
         child: MaterialApp(
-          title: 'Flutter Demo',
+          debugShowCheckedModeBanner: false,
+          title: 'Leaf Notes',
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           ),
           home: const HomePage(),
-          // home: const HomePage(),
+          // home: SplashAnimationScreen(),
           routes: {
             createOrUpdateNoteRoute: (context) => const CreateUpdateNoteView(),
           },
@@ -34,10 +35,10 @@ void main() {
   );
 }
 
-class MyBlocObserver extends BlocObserver {
-  @override
-  void onTransition(Bloc bloc, Transition transition) {
-    super.onTransition(bloc, transition);
-    devtools.log("$bloc: $transition");
-  }
-}
+// class MyBlocObserver extends BlocObserver {
+//   @override
+//   void onTransition(Bloc bloc, Transition transition) {
+//     super.onTransition(bloc, transition);
+//     devtools.log("$bloc: $transition");
+//   }
+// }
