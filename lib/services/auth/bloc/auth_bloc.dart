@@ -26,18 +26,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onAuthInitalize(AuthInitalize event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
-    await provider.initalize();
-    final user = provider.currentUser;
-    if (user != null) {
-      if (user.isEmailVerified) {
-        return emit(AuthLoggedIn(user: user));
+    try {
+      await provider.initalize().timeout(const Duration(seconds: 10));
+      final user = provider.currentUser;
+      if (user != null) {
+        if (user.isEmailVerified) {
+          return emit(AuthLoggedIn(user: user));
+        } else {
+          await provider.sendEmailVerification();
+          return emit(
+            AuthLoggedOut(exception: null, isRegistering: false, user: user),
+          );
+        }
       } else {
-        await provider.sendEmailVerification();
         return emit(
-          AuthLoggedOut(exception: null, isRegistering: false, user: user),
+          AuthLoggedOut(exception: null, isRegistering: false, user: null),
         );
       }
-    } else {
+    } on TimeoutException {
+      return emit(
+        AuthLoggedOut(exception: null, isRegistering: false, user: null),
+      );
+    } on Exception {
+      return emit(
+        AuthLoggedOut(exception: null, isRegistering: false, user: null),
+      );
+    } catch (_) {
       return emit(
         AuthLoggedOut(exception: null, isRegistering: false, user: null),
       );
@@ -46,7 +60,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onAuthLoginRequested(
     AuthLoginRequested event,
-    Emitter<AuthState> state,
+    Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading(text: "Verifying credentials"));
     try {
@@ -66,7 +80,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onAuthRegisterRequested(
     AuthRegisterRequested event,
-    Emitter<AuthState> state,
+    Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading(text: "Registering"));
     try {
@@ -222,17 +236,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onAuthResetPasswordRequested(
     AuthResetPasswordRequested event,
     Emitter<AuthState> emit,
-  ) async{
-    if(event.email==null){//user clicks to go to the reset password view
+  ) async {
+    if (event.email == null) {
+      //user clicks to go to the reset password view
       return emit(AuthResetingPassword(exception: null));
-    }else{
+    } else {
       emit(AuthLoading(text: "Sending the link to reset password"));
-      try{
+      try {
         await provider.resetPassword(email: event.email!);
         emit(AuthResetingPassword(exception: null, haveSentEmail: true));
-      }on Exception catch(e){
+      } on Exception catch (e) {
         return emit(AuthResetingPassword(exception: e));
-      }catch(e){
+      } catch (e) {
         rethrow;
       }
     }
