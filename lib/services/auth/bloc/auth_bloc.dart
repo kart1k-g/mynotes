@@ -1,17 +1,26 @@
-import 'dart:async';
-
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:meta/meta.dart';
+import 'package:flutter/material.dart';
+import 'package:mynotes/enums/auth_providers_types.dart';
 import 'package:mynotes/services/auth/auth_user.dart';
-import 'package:mynotes/services/auth/firebase_auth_provider.dart';
+import 'package:mynotes/services/auth/providers/firebase_auth_provider.dart';
+import 'package:mynotes/services/auth/firebase_auth_service.dart';
+import 'package:mynotes/services/auth/providers/github_oauth_provider.dart';
+import 'package:mynotes/services/auth/providers/google_oauth_provider.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final FirebaseAuthProvider provider;
-  AuthBloc({required this.provider}) : super(AuthUninitalized()) {
+  final FirebaseAuthProvider firebaseAuthProvider;
+  final GoogleOAuthProvider googleOAuthProvider;
+  final GithubOAuthProvider githubOAuthProvider;
+  final _firebaseAuthService = FirebaseAuthService();
+  AuthBloc({
+    required this.firebaseAuthProvider,
+    required this.googleOAuthProvider,
+    required this.githubOAuthProvider,
+  }) : super(AuthUninitalized()) {
     on<AuthInitalize>(_onAuthInitalize);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthRegisterRequested>(_onAuthRegisterRequested);
@@ -27,13 +36,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onAuthInitalize(AuthInitalize event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      await provider.initalize().timeout(const Duration(seconds: 10));
-      final user = provider.currentUser;
+      await _firebaseAuthService.initalize().timeout(
+        const Duration(seconds: 10),
+      );
+      final user = _firebaseAuthService.currentUser;
       if (user != null) {
         if (user.isEmailVerified) {
           return emit(AuthLoggedIn(user: user));
         } else {
-          await provider.sendEmailVerification();
+          await firebaseAuthProvider.sendEmailVerification();
           return emit(
             AuthLoggedOut(exception: null, isRegistering: false, user: user),
           );
@@ -43,18 +54,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           AuthLoggedOut(exception: null, isRegistering: false, user: null),
         );
       }
-    } on TimeoutException {
+    } on Exception catch (e) {
       return emit(
-        AuthLoggedOut(exception: null, isRegistering: false, user: null),
+        AuthLoggedOut(exception: e, isRegistering: false, user: null),
       );
-    } on Exception {
-      return emit(
-        AuthLoggedOut(exception: null, isRegistering: false, user: null),
-      );
-    } catch (_) {
-      return emit(
-        AuthLoggedOut(exception: null, isRegistering: false, user: null),
-      );
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -64,11 +69,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading(text: "Verifying credentials"));
     try {
-      final user = await provider.logInUser(
-        email: event.email,
-        password: event.password,
-      );
-      return emit(AuthLoggedIn(user: user));
+      switch (event.authProviderType) {
+        case AuthProviderType.googleOAuth:
+          await googleOAuthProvider.logInUser();
+          break;
+        case AuthProviderType.githubOAuth:
+          await githubOAuthProvider.logInUser();
+          break;
+        case AuthProviderType.firebaseEmailAndPassword:
+          await firebaseAuthProvider.logInUser(
+            email: event.email!,
+            password: event.password!,
+          );
+      }
+      return emit(AuthLoggedIn(user: _firebaseAuthService.currentUser));
     } on Exception catch (e) {
       return emit(
         AuthLoggedOut(exception: e, isRegistering: false, user: null),
@@ -84,11 +98,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading(text: "Registering"));
     try {
-      final user = await provider.registerUser(
+      await firebaseAuthProvider.registerUser(
         email: event.email,
         password: event.password,
       );
-      emit(AuthLoggedOut(exception: null, isRegistering: false, user: user));
+      emit(
+        AuthLoggedOut(
+          exception: null,
+          isRegistering: false,
+          user: _firebaseAuthService.currentUser,
+        ),
+      );
     } on Exception catch (e) {
       return emit(AuthLoggedOut(exception: e, isRegistering: true, user: null));
     } catch (e) {
@@ -102,22 +122,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading(text: "Sending email verification link"));
     try {
-      await provider.sendEmailVerification().timeout(
+      await firebaseAuthProvider.sendEmailVerification().timeout(
         const Duration(seconds: 5),
       );
       return emit(
         AuthLoggedOut(
           exception: null,
           isRegistering: false,
-          user: provider.currentUser,
-        ),
-      );
-    } on TimeoutException {
-      return emit(
-        AuthLoggedOut(
-          exception: Exception("Error sending email verification!!"),
-          isRegistering: false,
-          user: provider.currentUser,
+          user: _firebaseAuthService.currentUser,
         ),
       );
     } on Exception catch (e) {
@@ -125,7 +137,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         AuthLoggedOut(
           exception: e,
           isRegistering: false,
-          user: provider.currentUser,
+          user: _firebaseAuthService.currentUser,
         ),
       );
     } catch (e) {
@@ -139,8 +151,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading(text: "Confirming"));
     try {
-      await provider.reload().timeout(const Duration(seconds: 5));
-      final user = provider.currentUser;
+      await _firebaseAuthService.reload().timeout(const Duration(seconds: 5));
+      final user = _firebaseAuthService.currentUser;
       if (user?.isEmailVerified ?? false) {
         return emit(AuthLoggedIn(user: user!));
       } else {
@@ -148,24 +160,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           AuthLoggedOut(
             exception: Exception("Retry"),
             isRegistering: false,
-            user: provider.currentUser,
+            user: user,
           ),
         );
       }
-    } on TimeoutException {
-      return emit(
-        AuthLoggedOut(
-          exception: Exception("Retry"),
-          isRegistering: false,
-          user: provider.currentUser,
-        ),
-      );
     } on Exception catch (e) {
       return emit(
         AuthLoggedOut(
           exception: e,
           isRegistering: false,
-          user: provider.currentUser,
+          user: _firebaseAuthService.currentUser,
         ),
       );
     } catch (e) {
@@ -179,9 +183,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading(text: "Logging you out"));
     try {
-      final user = provider.currentUser;
+      final user = _firebaseAuthService.currentUser;
       if (user != null) {
-        await provider.logOutUser();
+        await _firebaseAuthService.logOutUser();
       }
       return emit(
         AuthLoggedOut(
@@ -209,9 +213,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final user = provider.currentUser;
+      final user = _firebaseAuthService.currentUser;
       if (user != null) {
-        await provider.deleteUser();
+        await _firebaseAuthService.deleteUser();
       }
       return emit(
         AuthLoggedOut(
@@ -225,7 +229,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         AuthLoggedOut(
           exception: e,
           isRegistering: event.displayRegisterView,
-          user: provider.currentUser,
+          user: _firebaseAuthService.currentUser,
         ),
       );
     } catch (e) {
@@ -243,7 +247,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } else {
       emit(AuthLoading(text: "Sending the link to reset password"));
       try {
-        await provider.resetPassword(email: event.email!);
+        await firebaseAuthProvider.resetPassword(email: event.email!);
         emit(AuthResetingPassword(exception: null, haveSentEmail: true));
       } on Exception catch (e) {
         return emit(AuthResetingPassword(exception: e));

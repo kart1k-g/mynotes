@@ -28,8 +28,8 @@ final class AuthLoggedOut extends AuthState with EquatableMixin {
 }
 
 final class AuthLoggedIn extends AuthState {
-  final AuthUser user;
-  AuthLoggedIn({required this.user});
+  final AuthUser? user;
+  AuthLoggedIn({this.user});
 }
 
 final class AuthResetingPassword extends AuthState with EquatableMixin{

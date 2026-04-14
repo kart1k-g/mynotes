@@ -54,6 +54,14 @@ class _HomePageState extends State<HomePage> {
               context: context,
               text: "Authentication error",
             );
+          } else if (exception
+              is EmailAlreadyAssociatedWithAnAccountException) {
+            await showErrorDialog(
+              context: context,
+              text:
+                  'An account already exists for ${exception.email} using a different sign-in method. Sign in with the existing account once, and link this provider if needed.',
+            );
+            return;
           }
         } else if (state is AuthResetingPassword) {
           final exception = state.exception;

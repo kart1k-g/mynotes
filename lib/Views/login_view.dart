@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mynotes/enums/auth_providers_types.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 
 class LoginView extends StatefulWidget {
@@ -42,8 +43,8 @@ class _LoginViewState extends State<LoginView> {
             children: [
               const Text("Enter your credentials"),
 
-              const SizedBox(height: 10,),
-              
+              const SizedBox(height: 10),
+
               TextField(
                 controller: _email,
                 autocorrect: false,
@@ -68,7 +69,12 @@ class _LoginViewState extends State<LoginView> {
                         final password = _password.text;
 
                         context.read<AuthBloc>().add(
-                          AuthLoginRequested(email: email, password: password),
+                          AuthLoginRequested(
+                            email: email,
+                            password: password,
+                            authProviderType:
+                                AuthProviderType.firebaseEmailAndPassword,
+                          ),
                         );
                       },
                       child: const Text("Login"),
@@ -90,6 +96,28 @@ class _LoginViewState extends State<LoginView> {
                         );
                       },
                       child: const Text("Forgot password? Reset it here"),
+                    ),
+
+                    TextButton(
+                      onPressed: () {
+                        context.read<AuthBloc>().add(
+                          AuthLoginRequested(
+                            authProviderType: AuthProviderType.googleOAuth,
+                          ),
+                        );
+                      },
+                      child: const Text("Continue with Google"),
+                    ),
+
+                    TextButton(
+                      onPressed: () {
+                        context.read<AuthBloc>().add(
+                          AuthLoginRequested(
+                            authProviderType: AuthProviderType.githubOAuth,
+                          ),
+                        );
+                      },
+                      child: const Text("Continue with GitHub"),
                     ),
                   ],
                 ),

@@ -1,0 +1,1 @@
+enum AuthProviderType{googleOAuth, githubOAuth, firebaseEmailAndPassword}
