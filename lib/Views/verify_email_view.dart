@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mynotes/Views/widgets/auth_primary_btn.dart';
+import 'package:mynotes/Views/widgets/auth_ui.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 
 class VerifyEmailView extends StatefulWidget {
@@ -15,58 +17,89 @@ class _VerifyEmailViewState extends State<VerifyEmailView>
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        late final email;
-        if(state is AuthLoggedOut){
-          email=state.user?.email;
-        }else{
-          email=null;
-        }
+        final String email = state is AuthLoggedOut
+            ? (state.user?.email ?? '')
+            : '';
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text("Email Verification"),
-            backgroundColor: Colors.deepPurple,
-          ),
-          body: Padding(
-            padding: const EdgeInsetsGeometry.all(16.0),
-            child: Column(
-              children: [
-                Text(
-                  "Email verifiaction sent on $email",
+        return AuthBackgroundScaffold(
+          title: 'Verify Email',
+          subtitle: 'One quick step before you continue',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE9FAF7),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFB6ECE3)),
                 ),
-                
-                const SizedBox(height: 10,),
-                
-                TextButton(
-                  onPressed: (){
-                    context.read<AuthBloc>().add(AuthEmailVerificationRequested());
-                  },
-                  child: const Text("Resend email verification"),
+                child: Text(
+                  email.isEmpty
+                      ? 'A verification email has been sent to your inbox.'
+                      : 'A verification email has been sent to\n$email',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF213353),
+                    fontSize: 16,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                
-                TextButton(
-                  onPressed: () {
-                    context.read<AuthBloc>().add(
-                      AuthConfirmEmailVerificationRequested(),
-                    );
-                  },
-                  child: const Text("Email verified"),
+              ),
+              const SizedBox(height: 22),
+              AuthPrimaryButton(
+                label: 'I Verified My Email',
+                onPressed: () {
+                  context.read<AuthBloc>().add(
+                    AuthConfirmEmailVerificationRequested(),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: () {
+                  context.read<AuthBloc>().add(
+                    AuthEmailVerificationRequested(),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  foregroundColor: const Color(0xFF009C8A),
+                  side: const BorderSide(color: Color(0xFF87D8CD)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                
-                TextButton(
-                  onPressed: () {
-                    //until user is verified we don't want it in the db
-                    context.read<AuthBloc>().add(
-                      AuthDeleteUserRequested(displayRegisterView: false),
-                    );
-                    context.read<AuthBloc>().add(
-                      AuthLogOutRequested(displayRegisterView: true),
-                    );
-                  },
-                  child: const Text("Use another account"),
+                child: const Text(
+                  'Resend Verification Email',
+                  textAlign: TextAlign.center,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  // Until email is verified, this account should not remain in storage.
+                  context.read<AuthBloc>().add(
+                    AuthDeleteUserRequested(displayRegisterView: false),
+                  );
+                  context.read<AuthBloc>().add(
+                    AuthLogOutRequested(displayRegisterView: true),
+                  );
+                },
+                child: const Text(
+                  'Use Another Account',
+                  style: TextStyle(
+                    color: Color(0xFF5B6C87),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
