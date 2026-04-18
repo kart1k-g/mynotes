@@ -18,7 +18,7 @@ class LoadingScreen {
 
   void hide() {
     _controller?.close();
-    _controller=null;
+    _controller = null;
   }
 
   LoadingScreenController _showOverlay({
@@ -35,46 +35,67 @@ class LoadingScreen {
     final overlay = OverlayEntry(
       builder: (context) {
         return Material(
-          color: Colors.black.withAlpha(150),
+          color: const Color(0xFF0F172A).withValues(alpha: 0.35),
           child: Center(
             child: Container(
               constraints: BoxConstraints(
-                maxHeight: 0.8 * size.width,
-                maxWidth: 0.8 * size.height,
-                minWidth: 0.5 * size.width,
+                maxWidth: size.width * 0.8,
+                maxHeight: size.height * 0.8,
+                minWidth: size.width * 0.5,
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 10),
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 20),
-                      StreamBuilder(
-                        stream: _text.stream,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            return Text(
-                              snapshot.data.toString(),
-                              textAlign: TextAlign.center,
-                            );
-                          } else {
-                            return Text(
-                              "Unhandled case in overlay",
-                              textAlign: TextAlign.center,
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                color: const Color(0xFFF5FFFD).withValues(alpha: .96),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: .65),
+                  width: 1.1,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x1A053B37),
+                    blurRadius: 18,
+                    offset: Offset(0, 12),
                   ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(
+                      color: Color(0xFF00A693),
+                      strokeWidth: 3.5,
+                    ),
+                    const SizedBox(height: 24),
+                    StreamBuilder(
+                      stream: _text.stream,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(
+                            snapshot.data.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF162543),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                          );
+                        } else {
+                          return const Text(
+                            "Please wait...",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFF3D4E6C),
+                              fontSize: 16,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),

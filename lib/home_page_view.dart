@@ -6,11 +6,7 @@ import 'package:mynotes/Views/register_view.dart';
 import 'package:mynotes/Views/reset_password_view.dart';
 import 'package:mynotes/Views/verify_email_view.dart';
 import 'package:mynotes/helpers/loading/loading_screen.dart';
-import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
-import 'package:mynotes/utilites/dialogs/error_dialog.dart';
-
-import 'package:mynotes/utilites/dialogs/reset_password_email_sent.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,56 +24,6 @@ class _HomePageState extends State<HomePage> {
           LoadingScreen().show(context: context, text: state.text);
         } else {
           LoadingScreen().hide();
-        }
-
-        if (state is AuthLoggedOut) {
-          final exception = state.exception;
-          if (exception is IncorrectCredentialsAuthException) {
-            await showErrorDialog(
-              context: context,
-              text: "Invalid Credentials",
-            );
-          } else if (exception is WeakPasswordAuthException) {
-            await showErrorDialog(context: context, text: "Weak password");
-          } else if (exception is EmailAlreadyInUseAuthException) {
-            await showErrorDialog(
-              context: context,
-              text: "Email is already registered. Try logging in",
-            );
-          } else if (exception is InvalidEmailAuthException) {
-            await showErrorDialog(
-              context: context,
-              text: "Enter a valid email",
-            );
-          } else if (exception is GenericAuthException) {
-            await showErrorDialog(
-              context: context,
-              text: "Authentication error",
-            );
-          } else if (exception
-              is EmailAlreadyAssociatedWithAnAccountException) {
-            await showErrorDialog(
-              context: context,
-              text:
-                  'An account already exists for ${exception.email} using a different sign-in method. Sign in with the existing account once, and link this provider if needed.',
-            );
-            return;
-          }
-        } else if (state is AuthResetingPassword) {
-          final exception = state.exception;
-          if (exception is InvalidEmailAuthException) {
-            showErrorDialog(
-              context: context,
-              text: "The email provided is invalid. Retry",
-            );
-          } else if (exception is GenericAuthException) {
-            showErrorDialog(
-              context: context,
-              text: "An error occured while reseting password. Retry",
-            );
-          } else if (state.haveSentEmail) {
-            showResetPasswordEmailSentDialog(context: context);
-          }
         }
       },
       builder: (context, state) {

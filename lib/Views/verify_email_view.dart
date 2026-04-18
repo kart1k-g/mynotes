@@ -49,7 +49,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView>
               ),
               const SizedBox(height: 22),
               AuthPrimaryButton(
-                label: 'I Verified My Email',
+                label: 'I\'ve Verified My Email',
                 onPressed: () {
                   context.read<AuthBloc>().add(
                     AuthConfirmEmailVerificationRequested(),
