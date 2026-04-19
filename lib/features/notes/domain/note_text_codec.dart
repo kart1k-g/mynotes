@@ -1,25 +1,65 @@
-/// Encodes title and body into the single Firestore `text` field using a
-/// first-line title convention for new notes. Legacy notes without a newline
-/// are treated as body-only.
+import 'dart:convert';
+
+/// Stores note content in a Quill-first JSON envelope:
+/// {"v":1,"title":"...","delta":[...quill ops...]}
 class NoteTextCodec {
   NoteTextCodec._();
 
-  /// Persists as: `title\nbody` (title is a single line from the UI).
-  static String encode({required String title, required String body}) {
-    return '$title\n$body';
+  static const List<Map<String, String>> _emptyDelta = [
+    {'insert': '\n'},
+  ];
+
+  static String encodeQuill({
+    required String title,
+    required String quillDeltaJson,
+  }) {
+    final decodedDelta = jsonDecode(quillDeltaJson);
+    final delta = decodedDelta is List ? decodedDelta : <dynamic>[];
+    return jsonEncode({'v': 1, 'title': title, 'delta': delta});
   }
 
-  /// Decodes persisted text. If there is no newline, the entire string is
-  /// body and title is empty.
+  static Map<String, dynamic> _decodeEnvelope(String text) {
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is! Map) {
+        return <String, dynamic>{'title': '', 'delta': _emptyDelta};
+      }
+      final titleRaw = decoded['title'];
+      final deltaRaw = decoded['delta'];
+      if (titleRaw is! String || deltaRaw is! List) {
+        return <String, dynamic>{'title': '', 'delta': _emptyDelta};
+      }
+      return <String, dynamic>{'title': titleRaw, 'delta': deltaRaw};
+    } catch (_) {
+      return <String, dynamic>{'title': '', 'delta': _emptyDelta};
+    }
+  }
+
+  /// For editor bootstrap: returns serialized delta JSON array.
+  static String decodeQuillDeltaJson(String text) {
+    final env = _decodeEnvelope(text);
+    return jsonEncode(env['delta']);
+  }
+
   static (String title, String body) decode(String text) {
-    if (text.isEmpty) {
-      return ('', '');
+    final env = _decodeEnvelope(text);
+    final title = env['title'] as String;
+    final delta = env['delta'] as List;
+    final b = StringBuffer();
+    for (final op in delta) {
+      if (op is! Map) {
+        continue;
+      }
+      final insert = op['insert'];
+      if (insert is String) {
+        b.write(insert);
+      } else if (insert is Map) {
+        if (insert.containsKey('image') || insert.containsKey('video')) {
+          b.write(' [media] ');
+        }
+      }
     }
-    final i = text.indexOf('\n');
-    if (i < 0) {
-      return ('', text);
-    }
-    return (text.substring(0, i), text.substring(i + 1));
+    return (title, b.toString());
   }
 
   static String displayTitle(String text) {
@@ -39,7 +79,7 @@ class NoteTextCodec {
 
   static String snippet(String text, {int maxChars = 140}) {
     final (_, body) = decode(text);
-    final raw = body.trim().isEmpty ? text.trim() : body.trim();
+    final raw = body.trim();
     if (raw.isEmpty) {
       return '';
     }
@@ -54,18 +94,40 @@ class NoteTextCodec {
   static List<String> hashtags(String text) {
     final (_, body) = decode(text);
     final re = RegExp(r'#([a-zA-Z0-9_]+)');
-    return re
-        .allMatches('$text\n$body')
-        .map((m) => m.group(1)!)
-        .toSet()
-        .take(3)
-        .toList();
+    return re.allMatches(body).map((m) => m.group(1)!).toSet().take(3).toList();
   }
 
   static bool hasAttachmentHint(String text) {
-    final lower = text.toLowerCase();
-    return lower.contains('![') ||
-        lower.contains('http://') ||
-        lower.contains('https://');
+    final delta = jsonDecode(decodeQuillDeltaJson(text));
+    if (delta is! List) {
+      return false;
+    }
+    return delta.any((op) {
+      if (op is! Map) {
+        return false;
+      }
+      final insert = op['insert'];
+      if (insert is Map) {
+        return insert.containsKey('image') || insert.containsKey('video');
+      }
+      if (insert is String) {
+        final lower = insert.toLowerCase();
+        return lower.contains('http://') || lower.contains('https://');
+      }
+      return false;
+    });
+  }
+
+  /// Human-friendly note text for sharing.
+  static String shareText(String text) {
+    final (title, bodyRaw) = decode(text);
+    final body = bodyRaw.trim();
+    if (title.trim().isEmpty) {
+      return body;
+    }
+    if (body.isEmpty) {
+      return title.trim();
+    }
+    return '${title.trim()}\n\n$body';
   }
 }

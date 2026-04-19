@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mynotes/features/notes/domain/note_text_codec.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 import 'package:mynotes/services/cloud/cloud_storage_constants.dart';
 import 'package:mynotes/services/cloud/cloud_storage_exceptions.dart';
@@ -11,8 +12,12 @@ class FirebaseCloudStorage {
   final notes = FirebaseFirestore.instance.collection("notes");
 
   Future<CloudNote> createNewNote({required String ownerUserId}) async {
+    final emptyText = NoteTextCodec.encodeQuill(
+      title: '',
+      quillDeltaJson: '[{"insert":"\\n"}]',
+    );
     final document = await notes.add({
-      textFieldName: "",
+      textFieldName: emptyText,
       ownerUserIdFieldName: ownerUserId,
       isArchivedFieldName: false,
       updatedAtFieldName: FieldValue.serverTimestamp(),
@@ -21,7 +26,7 @@ class FirebaseCloudStorage {
     return CloudNote(
       documentId: fetchedNote.id,
       ownerUserId: ownerUserId,
-      text: "",
+      text: emptyText,
       isArchived: false,
     );
   }
@@ -31,8 +36,8 @@ class FirebaseCloudStorage {
         .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
         .snapshots()
         .map((event) {
-          final list =
-              event.docs.map((doc) => CloudNote.fromSnapshot(doc))
+          final list = event.docs
+              .map((doc) => CloudNote.fromSnapshot(doc))
               .where((note) => !note.isArchived)
               .toList();
           list.sort((a, b) {
@@ -61,9 +66,7 @@ class FirebaseCloudStorage {
 
   Future<void> archiveNote({required String documentId}) async {
     try {
-      await notes.doc(documentId).update({
-        isArchivedFieldName: true,
-      });
+      await notes.doc(documentId).update({isArchivedFieldName: true});
     } catch (e) {
       throw CouldNotUpdateNoteException();
     }

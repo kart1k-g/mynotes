@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:mynotes/Views/notes/create_update_note_view.dart';
 import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
 import 'package:mynotes/services/auth/providers/github_oauth_provider.dart';
@@ -31,6 +33,13 @@ void main() {
           debugShowCheckedModeBanner: false,
           title: 'Leaf Notes',
           theme: buildMyNotesTheme(),
+          localizationsDelegates: const [
+            FlutterQuillLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('en')],
           home: const HomePage(),
           // home: SplashAnimationScreen(),
           routes: {

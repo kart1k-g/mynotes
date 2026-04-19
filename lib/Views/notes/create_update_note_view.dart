@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:mynotes/features/notes/domain/note_text_codec.dart';
 import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
 import 'package:mynotes/features/notes/presentation/widgets/note_card.dart';
-import 'package:mynotes/features/notes/presentation/widgets/note_formatting_toolbar.dart';
 import 'package:mynotes/services/auth/firebase_auth_service.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 import 'package:mynotes/services/cloud/firebase_cloud_storage.dart';
@@ -26,22 +27,25 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
 
   late final FirebaseCloudStorage _notesService;
   late final TextEditingController _titleController;
-  late final TextEditingController _bodyController;
-  late final FocusNode _bodyFocus;
+  late QuillController _quillController;
+  late final FocusNode _editorFocus;
+  late final ScrollController _editorScrollController;
 
   Timer? _debounce;
   bool _suppressSave = true;
   bool _listenersAttached = false;
   bool _isSaving = false;
   bool _isSaved = true;
+  bool _showExpandedToolbar = false;
 
   @override
   void initState() {
     _notesService = FirebaseCloudStorage();
     _titleController = TextEditingController();
-    _bodyController = TextEditingController();
-    _bodyFocus = FocusNode();
-    _bodyFocus.addListener(() {
+    _quillController = QuillController.basic();
+    _editorFocus = FocusNode();
+    _editorScrollController = ScrollController();
+    _editorFocus.addListener(() {
       if (mounted) {
         setState(() {});
       }
@@ -53,27 +57,41 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   void dispose() {
     _debounce?.cancel();
     _titleController.removeListener(_onTextChanged);
-    _bodyController.removeListener(_onTextChanged);
+    _quillController.removeListener(_onTextChanged);
     _deleteNoteIfTextIsEmpty();
     _saveNoteIfTextIsNotEmpty();
     _titleController.dispose();
-    _bodyController.dispose();
-    _bodyFocus.dispose();
+    _quillController.dispose();
+    _editorFocus.dispose();
+    _editorScrollController.dispose();
     super.dispose();
   }
 
+  Document _documentFromStoredText(String text) {
+    final quillJson = NoteTextCodec.decodeQuillDeltaJson(text);
+    final decoded = jsonDecode(quillJson);
+    if (decoded is List) {
+      return Document.fromJson(decoded.cast<Map<String, dynamic>>());
+    }
+    return Document();
+  }
+
+  String _deltaJson() =>
+      jsonEncode(_quillController.document.toDelta().toJson());
+
+  String _plainBody() => _quillController.document.toPlainText().trim();
+
   bool get _isEmptyNote {
-    return _titleController.text.trim().isEmpty &&
-        _bodyController.text.trim().isEmpty;
+    return _titleController.text.trim().isEmpty && _plainBody().isEmpty;
   }
 
   String _composeText() {
     if (_isEmptyNote) {
       return '';
     }
-    return NoteTextCodec.encode(
+    return NoteTextCodec.encodeQuill(
       title: _titleController.text,
-      body: _bodyController.text,
+      quillDeltaJson: _deltaJson(),
     );
   }
 
@@ -130,9 +148,9 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
 
   void _setupTextControllerListener() {
     _titleController.removeListener(_onTextChanged);
-    _bodyController.removeListener(_onTextChanged);
+    _quillController.removeListener(_onTextChanged);
     _titleController.addListener(_onTextChanged);
-    _bodyController.addListener(_onTextChanged);
+    _quillController.addListener(_onTextChanged);
   }
 
   void _deleteNoteIfTextIsEmpty() {
@@ -211,6 +229,26 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
               padding: const EdgeInsets.only(right: 4),
               child: Row(
                 children: [
+                  IconButton(
+                    tooltip: 'Undo',
+                    onPressed: _quillController.hasUndo
+                        ? () {
+                            _quillController.undo();
+                            _scheduleSave();
+                          }
+                        : null,
+                    icon: const Icon(Icons.undo_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Redo',
+                    onPressed: _quillController.hasRedo
+                        ? () {
+                            _quillController.redo();
+                            _scheduleSave();
+                          }
+                        : null,
+                    icon: const Icon(Icons.redo_rounded),
+                  ),
                   if (_isSaving)
                     const Padding(
                       padding: EdgeInsets.only(right: 8),
@@ -253,14 +291,14 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                     ),
                     onSelected: (value) async {
                       if (value == 'share') {
-                        final text = _composeText();
-                        if (text.isEmpty || _note == null) {
+                        final encoded = _composeText();
+                        if (encoded.isEmpty || _note == null) {
                           await showcannotShareEmptyNoteDialog(
                             context: context,
                           );
                         } else {
                           await SharePlus.instance.share(
-                            ShareParams(text: text),
+                            ShareParams(text: NoteTextCodec.shareText(encoded)),
                           );
                         }
                       } else if (value == 'delete') {
@@ -298,20 +336,73 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                 }
                 final note = snapshot.data!;
                 if (!_listenersAttached) {
-                  _listenersAttached = true;
-                  _setupTextControllerListener();
                   _suppressSave = true;
                   final decoded = NoteTextCodec.decode(note.text);
                   _titleController.text = decoded.$1;
-                  _bodyController.text = decoded.$2;
+                  _quillController.dispose();
+                  _quillController = QuillController(
+                    document: _documentFromStoredText(note.text),
+                    selection: const TextSelection.collapsed(offset: 0),
+                  );
+                  _setupTextControllerListener();
+                  _listenersAttached = true;
                   _suppressSave = false;
                 }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Container(
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: MyNotesColors.divider,
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: QuillSimpleToolbar(
+                              controller: _quillController,
+                              config: QuillSimpleToolbarConfig(
+                                multiRowsDisplay: _showExpandedToolbar,
+                                showSubscript: false,
+                                showSuperscript: false,
+                                showSearchButton: false,
+                                showUndo: false,
+                                showRedo: false,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: _showExpandedToolbar
+                                ? 'Collapse toolbar'
+                                : 'Show all toolbar options',
+                            onPressed: () {
+                              setState(() {
+                                _showExpandedToolbar = !_showExpandedToolbar;
+                              });
+                            },
+                            icon: Icon(
+                              _showExpandedToolbar
+                                  ? Icons.arrow_drop_up_rounded
+                                  : Icons.arrow_drop_down_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_showExpandedToolbar)
+                      const Divider(
+                        height: 0.5,
+                        thickness: 0.5,
+                        color: MyNotesColors.divider,
+                      ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -348,29 +439,14 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                             ),
                             const SizedBox(height: 12),
                             Expanded(
-                              child: TextField(
-                                controller: _bodyController,
-                                focusNode: _bodyFocus,
-                                keyboardType: TextInputType.multiline,
-                                maxLines: null,
-                                expands: true,
-                                textAlignVertical: TextAlignVertical.top,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  height: 1.45,
-                                  color: MyNotesColors.navy,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  hintText: 'Start typing your brilliant idea…',
-                                  alignLabelWithHint: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  hintStyle: TextStyle(
-                                    color: MyNotesColors.hint,
-                                    fontSize: 16,
-                                  ),
+                              child: QuillEditor(
+                                controller: _quillController,
+                                focusNode: _editorFocus,
+                                scrollController: _editorScrollController,
+                                config: const QuillEditorConfig(
+                                  padding: EdgeInsets.zero,
+                                  placeholder:
+                                      'Start typing your brilliant idea…',
                                 ),
                               ),
                             ),
@@ -385,9 +461,6 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
             }
           },
         ),
-        bottomNavigationBar: _bodyFocus.hasFocus
-            ? NoteFormattingToolbar(controller: _bodyController)
-            : null,
       ),
     );
   }
