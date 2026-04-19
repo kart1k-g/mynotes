@@ -14,12 +14,15 @@ class FirebaseCloudStorage {
     final document = await notes.add({
       textFieldName: "",
       ownerUserIdFieldName: ownerUserId,
+      isArchivedFieldName: false,
+      updatedAtFieldName: FieldValue.serverTimestamp(),
     });
     final fetchedNote = await document.get();
     return CloudNote(
       documentId: fetchedNote.id,
       ownerUserId: ownerUserId,
       text: "",
+      isArchived: false,
     );
   }
 
@@ -27,7 +30,18 @@ class FirebaseCloudStorage {
     final allNotes = notes
         .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
         .snapshots()
-        .map((event) => event.docs.map((doc) => CloudNote.fromSnapshot(doc)));
+        .map((event) {
+          final list =
+              event.docs.map((doc) => CloudNote.fromSnapshot(doc))
+              .where((note) => !note.isArchived)
+              .toList();
+          list.sort((a, b) {
+            final ta = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final tb = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return tb.compareTo(ta);
+          });
+          return list;
+        });
     return allNotes;
   }
 
@@ -36,7 +50,20 @@ class FirebaseCloudStorage {
     required String text,
   }) async {
     try {
-      await notes.doc(documentId).update({textFieldName: text});
+      await notes.doc(documentId).update({
+        textFieldName: text,
+        updatedAtFieldName: FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw CouldNotUpdateNoteException();
+    }
+  }
+
+  Future<void> archiveNote({required String documentId}) async {
+    try {
+      await notes.doc(documentId).update({
+        isArchivedFieldName: true,
+      });
     } catch (e) {
       throw CouldNotUpdateNoteException();
     }

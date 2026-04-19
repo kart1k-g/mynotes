@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/Views/notes/create_update_note_view.dart';
+import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
 import 'package:mynotes/services/auth/providers/github_oauth_provider.dart';
 import 'package:mynotes/services/auth/providers/google_oauth_provider.dart';
 import 'package:mynotes/home_page_view.dart';
@@ -29,9 +30,7 @@ void main() {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Leaf Notes',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          ),
+          theme: buildMyNotesTheme(),
           home: const HomePage(),
           // home: SplashAnimationScreen(),
           routes: {
