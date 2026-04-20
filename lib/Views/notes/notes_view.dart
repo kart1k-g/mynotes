@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/Views/notes/notes_list_view.dart';
@@ -20,6 +22,7 @@ class NotesViewState extends StatefulWidget {
 class _NotesViewStateState extends State<NotesViewState> {
   late final FirebaseCloudStorage _notesService;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   String _searchQuery = '';
   bool _recentOnly = false;
@@ -30,14 +33,28 @@ class _NotesViewStateState extends State<NotesViewState> {
   @override
   void initState() {
     _notesService = FirebaseCloudStorage();
-    _searchController.addListener(() {
-      setState(() => _searchQuery = _searchController.text);
-    });
+    _searchController.addListener(_onSearchChanged);
     super.initState();
+  }
+
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 180), () {
+      if (!mounted) {
+        return;
+      }
+      final next = _searchController.text.trim();
+      if (next == _searchQuery) {
+        return;
+      }
+      setState(() => _searchQuery = next);
+    });
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }

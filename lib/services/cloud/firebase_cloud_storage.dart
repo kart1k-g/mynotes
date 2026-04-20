@@ -16,8 +16,10 @@ class FirebaseCloudStorage {
       title: '',
       quillDeltaJson: '[{"insert":"\\n"}]',
     );
+    final searchableText = NoteTextCodec.searchableText(emptyText);
     final document = await notes.add({
       textFieldName: emptyText,
+      searchableTextFieldName: searchableText,
       ownerUserIdFieldName: ownerUserId,
       isArchivedFieldName: false,
       updatedAtFieldName: FieldValue.serverTimestamp(),
@@ -27,6 +29,7 @@ class FirebaseCloudStorage {
       documentId: fetchedNote.id,
       ownerUserId: ownerUserId,
       text: emptyText,
+      searchableText: searchableText,
       isArchived: false,
     );
   }
@@ -55,8 +58,10 @@ class FirebaseCloudStorage {
     required String text,
   }) async {
     try {
+      final searchableText = NoteTextCodec.searchableText(text);
       await notes.doc(documentId).update({
         textFieldName: text,
+        searchableTextFieldName: searchableText,
         updatedAtFieldName: FieldValue.serverTimestamp(),
       });
     } catch (e) {

@@ -90,6 +90,19 @@ class NoteTextCodec {
     return '${flat.substring(0, maxChars).trim()}…';
   }
 
+  static String normalizeForSearch(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String searchableText(String text) {
+    final decoded = decode(text);
+    return normalizeForSearch('${decoded.$1}\n${decoded.$2}');
+  }
+
   /// Lightweight tag hints parsed from body text (no separate DB field).
   static List<String> hashtags(String text) {
     final (_, body) = decode(text);

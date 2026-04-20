@@ -30,8 +30,8 @@ class NotesListView extends StatelessWidget {
   final bool gridView;
 
   Iterable<CloudNote> get _filtered {
-    final q = searchQuery.trim().toLowerCase();
-    final recentCutoff = DateTime.now().subtract(const Duration(days: 7));
+    final q = NoteTextCodec.normalizeForSearch(searchQuery);
+    final recentCutoff = DateTime.now().subtract(const Duration(days: 1));
     return notes.where((n) {
       if (recentOnly) {
         final t = n.updatedAt;
@@ -42,7 +42,7 @@ class NotesListView extends StatelessWidget {
       if (q.isEmpty) {
         return true;
       }
-      return n.text.toLowerCase().contains(q);
+      return n.searchableText.contains(q);
     });
   }
 
