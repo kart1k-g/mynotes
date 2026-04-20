@@ -6,6 +6,7 @@ class CloudNote {
   final String documentId;
   final String ownerUserId;
   final String text;
+  final List<String> tags;
   final String searchableText;
   final DateTime? updatedAt;
   final bool isArchived;
@@ -14,6 +15,7 @@ class CloudNote {
     required this.documentId,
     required this.ownerUserId,
     required this.text,
+    this.tags = const [],
     required this.searchableText,
     this.updatedAt,
     this.isArchived = false,
@@ -23,9 +25,23 @@ class CloudNote {
     : documentId = snapshot.id,
       ownerUserId = snapshot.data()[ownerUserIdFieldName] as String,
       text = snapshot.data()[textFieldName] as String? ?? '',
+      tags = _resolveTags(snapshot.data()),
       searchableText = _resolveSearchableText(snapshot.data()),
       isArchived = snapshot.data()[isArchivedFieldName] as bool? ?? false,
       updatedAt = _timestampToDateTime(snapshot.data()[updatedAtFieldName]);
+
+  static List<String> _resolveTags(Map<String, dynamic> data) {
+    final raw = data[tagsFieldName];
+    if (raw is List) {
+      return raw
+          .whereType<String>()
+          .map((tag) => tag.trim().toLowerCase())
+          .where((tag) => tag.isNotEmpty)
+          .toSet()
+          .toList();
+    }
+    return const [];
+  }
 
   static String _resolveSearchableText(Map<String, dynamic> data) {
     final raw = data[searchableTextFieldName];
@@ -33,7 +49,8 @@ class CloudNote {
       return raw;
     }
     final text = data[textFieldName] as String? ?? '';
-    return NoteTextCodec.searchableText(text);
+    final tags = _resolveTags(data);
+    return NoteTextCodec.searchableText(text, extraTerms: tags);
   }
 
   static DateTime? _timestampToDateTime(Object? raw) {

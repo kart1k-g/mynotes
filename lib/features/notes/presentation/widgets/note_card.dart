@@ -39,7 +39,9 @@ class NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = NoteTextCodec.displayTitle(note.text);
     final snippet = NoteTextCodec.snippet(note.text);
-    final tags = NoteTextCodec.hashtags(note.text);
+    final tags = note.tags.isNotEmpty
+        ? note.tags
+        : NoteTextCodec.hashtags(note.text);
     final hasMedia = NoteTextCodec.hasAttachmentHint(note.text);
     final timeLabel = _relativeTime(note.updatedAt);
 

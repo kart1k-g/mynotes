@@ -22,11 +22,20 @@ class CreateUpdateNoteView extends StatefulWidget {
 }
 
 class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
+  static const List<String> _defaultTags = [
+    'work',
+    'personal',
+    'ideas',
+    'todo',
+    'important',
+  ];
+
   CloudNote? _note;
   Future<CloudNote>? _noteFuture;
 
   late final FirebaseCloudStorage _notesService;
   late final TextEditingController _titleController;
+  late final TextEditingController _tagController;
   late QuillController _quillController;
   late final FocusNode _editorFocus;
   late final ScrollController _editorScrollController;
@@ -37,11 +46,13 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   bool _isSaving = false;
   bool _isSaved = true;
   bool _showExpandedToolbar = false;
+  final Set<String> _tags = <String>{};
 
   @override
   void initState() {
     _notesService = FirebaseCloudStorage();
     _titleController = TextEditingController();
+    _tagController = TextEditingController();
     _quillController = QuillController.basic();
     _editorFocus = FocusNode();
     _editorScrollController = ScrollController();
@@ -61,6 +72,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     _deleteNoteIfTextIsEmpty();
     _saveNoteIfTextIsNotEmpty();
     _titleController.dispose();
+    _tagController.dispose();
     _quillController.dispose();
     _editorFocus.dispose();
     _editorScrollController.dispose();
@@ -82,7 +94,121 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   String _plainBody() => _quillController.document.toPlainText().trim();
 
   bool get _isEmptyNote {
-    return _titleController.text.trim().isEmpty && _plainBody().isEmpty;
+    return _titleController.text.trim().isEmpty &&
+        _plainBody().isEmpty &&
+        _tags.isEmpty;
+  }
+
+  List<String> _normalizedSortedTags() {
+    final list = _tags
+        .map((tag) => tag.trim().toLowerCase())
+        .where((tag) => tag.isNotEmpty)
+        .toSet()
+        .toList();
+    list.sort();
+    return list;
+  }
+
+  String _normalizeTag(String raw) {
+    return raw
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'^#+'), '')
+        .replaceAll(RegExp(r'[^a-z0-9 _-]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  void _toggleTag(String tag, bool selected) {
+    final normalized = _normalizeTag(tag);
+    if (normalized.isEmpty) {
+      return;
+    }
+    setState(() {
+      if (selected) {
+        _tags.add(normalized);
+      } else {
+        _tags.remove(normalized);
+      }
+    });
+    _scheduleSave();
+  }
+
+  void _showWarningSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  Future<void> _showAddCustomTagDialog() async {
+    _tagController.clear();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Custom Tag'),
+        content: TextField(
+          controller: _tagController,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) {
+            Navigator.pop(ctx, _normalizeTag(value));
+          },
+          decoration: const InputDecoration(
+            hintText: 'Enter tag name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final normalized = _normalizeTag(_tagController.text);
+              Navigator.pop(ctx, normalized);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty) {
+      if (_tags.contains(result)) {
+        _showWarningSnackBar('This tag already exists in this note.');
+      } else {
+        final user = FirebaseAuthService().currentUser;
+        if (user == null) {
+          _showWarningSnackBar('Could not add tag. Please sign in again.');
+        } else {
+          try {
+            final addResult = await _notesService.addCustomTagForUser(
+              ownerUserId: user.id,
+              tag: result,
+            );
+
+            if (!mounted) {
+              return;
+            }
+
+            setState(() {
+              _tags.add(result);
+            });
+            _scheduleSave();
+
+            if (addResult == CustomTagAddResult.alreadyExists) {
+              _showWarningSnackBar('This tag already exists for your account.');
+            }
+          } catch (_) {
+            _showWarningSnackBar('Could not save custom tag. Try again.');
+          }
+        }
+      }
+    }
+    _tagController.clear();
   }
 
   String _composeText() {
@@ -113,13 +239,96 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     return newNote;
   }
 
+  Widget _buildSingleRowTagsEditor() {
+    final customTags = _tags.where((t) => !_defaultTags.contains(t)).toList()
+      ..sort();
+
+    // All tag items: default tags first, then custom tags
+    final allTagItems = [
+      for (final tag in _defaultTags)
+        (tag: tag, isDefault: true, isCustom: false),
+      for (final tag in customTags)
+        (tag: tag, isDefault: false, isCustom: true),
+    ];
+
+    return SizedBox(
+      height: 36,
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (int i = 0; i < allTagItems.length; i++) ...[
+                    _buildTagButton(
+                      allTagItems[i].tag,
+                      isSelected: _tags.contains(allTagItems[i].tag),
+                      isDefault: allTagItems[i].isDefault,
+                    ),
+                    if (i < allTagItems.length - 1) const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          ActionChip(
+            label: const Text('Add'),
+            avatar: const Icon(Icons.add_rounded, size: 18),
+            onPressed: _showAddCustomTagDialog,
+            side: const BorderSide(color: MyNotesColors.divider),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTagButton(
+    String tag, {
+    required bool isSelected,
+    required bool isDefault,
+  }) {
+    if (isDefault) {
+      return FilterChip(
+        label: Text(tag),
+        selected: isSelected,
+        onSelected: (selected) => _toggleTag(tag, selected),
+        selectedColor: MyNotesColors.teal.withValues(alpha: 0.14),
+        checkmarkColor: MyNotesColors.teal,
+        side: const BorderSide(color: MyNotesColors.divider),
+        labelStyle: TextStyle(
+          color: isSelected ? MyNotesColors.charcoal : MyNotesColors.muted,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      );
+    } else {
+      return InputChip(
+        label: Text(tag),
+        onDeleted: () => _toggleTag(tag, false),
+        deleteIcon: const Icon(Icons.close_rounded, size: 16),
+        side: const BorderSide(color: MyNotesColors.divider),
+        labelStyle: const TextStyle(
+          color: MyNotesColors.charcoal,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      );
+    }
+  }
+
   Future<void> _flushSave() async {
     final note = _note;
     if (note == null) {
       return;
     }
     final text = _composeText();
-    await _notesService.updateNote(documentId: note.documentId, text: text);
+    await _notesService.updateNote(
+      documentId: note.documentId,
+      text: text,
+      tags: _normalizedSortedTags(),
+    );
     if (mounted) {
       setState(() {
         _isSaving = false;
@@ -155,7 +364,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
 
   void _deleteNoteIfTextIsEmpty() {
     final note = _note;
-    if (note != null && _composeText().isEmpty) {
+    if (note != null && _composeText().isEmpty && _tags.isEmpty) {
       _notesService.deleteNote(documentId: note.documentId);
     }
   }
@@ -163,8 +372,12 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   Future<void> _saveNoteIfTextIsNotEmpty() async {
     final note = _note;
     final text = _composeText();
-    if (note != null && text.isNotEmpty) {
-      await _notesService.updateNote(documentId: note.documentId, text: text);
+    if (note != null && (text.isNotEmpty || _tags.isNotEmpty)) {
+      await _notesService.updateNote(
+        documentId: note.documentId,
+        text: text,
+        tags: _normalizedSortedTags(),
+      );
     }
   }
 
@@ -339,6 +552,9 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                   _suppressSave = true;
                   final decoded = NoteTextCodec.decode(note.text);
                   _titleController.text = decoded.$1;
+                  _tags
+                    ..clear()
+                    ..addAll(note.tags);
                   _quillController.dispose();
                   _quillController = QuillController(
                     document: _documentFromStoredText(note.text),
@@ -406,6 +622,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            _buildSingleRowTagsEditor(),
+                            const SizedBox(height: 12),
                             Hero(
                               tag: NoteCard.heroTagFor(note.documentId),
                               child: Material(

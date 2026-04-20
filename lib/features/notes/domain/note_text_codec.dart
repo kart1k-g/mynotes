@@ -98,9 +98,13 @@ class NoteTextCodec {
         .trim();
   }
 
-  static String searchableText(String text) {
+  static String searchableText(
+    String text, {
+    Iterable<String> extraTerms = const [],
+  }) {
     final decoded = decode(text);
-    return normalizeForSearch('${decoded.$1}\n${decoded.$2}');
+    final extras = extraTerms.join(' ');
+    return normalizeForSearch('${decoded.$1}\n${decoded.$2}\n$extras');
   }
 
   /// Lightweight tag hints parsed from body text (no separate DB field).
