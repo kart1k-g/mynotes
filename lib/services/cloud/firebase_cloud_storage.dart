@@ -14,6 +14,35 @@ class FirebaseCloudStorage {
   final notes = FirebaseFirestore.instance.collection("notes");
   final tags = FirebaseFirestore.instance.collection("tags");
 
+  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _getTagDoc(
+    String ownerUserId,
+  ) async {
+    final existingDocQuery = await tags
+        .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+        .limit(1)
+        .get();
+    if (existingDocQuery.docs.isEmpty) {
+      return null;
+    }
+    return existingDocQuery.docs.first;
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>> _getOrCreateTagDoc(
+    String ownerUserId,
+  ) async {
+    final existing = await _getTagDoc(ownerUserId);
+    if (existing != null) {
+      return existing;
+    }
+    final created = await tags.add({
+      ownerUserIdFieldName: ownerUserId,
+      customTagsListFieldName: const <String>[],
+      customTagMetaFieldName: const <String, dynamic>{},
+    });
+    final createdSnap = await created.get();
+    return createdSnap;
+  }
+
   Future<CloudNote> createNewNote({required String ownerUserId}) async {
     final emptyText = NoteTextCodec.encodeQuill(
       title: '',
@@ -106,6 +135,29 @@ class FirebaseCloudStorage {
     }
   }
 
+  Future<List<String>> getCustomTagsForUser({
+    required String ownerUserId,
+  }) async {
+    try {
+      final doc = await _getTagDoc(ownerUserId);
+      if (doc == null) {
+        return const [];
+      }
+      final data = doc.data();
+      final customTags =
+          (data[customTagsListFieldName] as List<dynamic>? ?? const [])
+              .whereType<String>()
+              .map((item) => item.trim().toLowerCase())
+              .where((item) => item.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
+      return customTags;
+    } catch (e) {
+      throw CouldNotGetAllNotesException();
+    }
+  }
+
   Future<CustomTagAddResult> addCustomTagForUser({
     required String ownerUserId,
     required String tag,
@@ -116,21 +168,8 @@ class FirebaseCloudStorage {
     }
 
     try {
-      final existingDocQuery = await tags
-          .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
-          .limit(1)
-          .get();
-
-      if (existingDocQuery.docs.isEmpty) {
-        await tags.add({
-          ownerUserIdFieldName: ownerUserId,
-          customTagsListFieldName: [normalizedTag],
-        });
-        return CustomTagAddResult.added;
-      }
-
-      final doc = existingDocQuery.docs.first;
-      final data = doc.data();
+      final doc = await _getOrCreateTagDoc(ownerUserId);
+      final data = doc.data() ?? <String, dynamic>{};
       final existingTags =
           (data[customTagsListFieldName] as List<dynamic>? ?? const [])
               .whereType<String>()
@@ -147,6 +186,77 @@ class FirebaseCloudStorage {
       });
       return CustomTagAddResult.added;
     } catch (e) {
+      throw CouldNotUpdateNoteException();
+    }
+  }
+
+  Future<Map<String, int>> getTagColorsForUser({
+    required String ownerUserId,
+  }) async {
+    try {
+      final doc = await _getTagDoc(ownerUserId);
+      if (doc == null) {
+        return const {};
+      }
+      final data = doc.data();
+      final rawMeta = data[customTagMetaFieldName];
+      if (rawMeta is! Map) {
+        return const {};
+      }
+      final result = <String, int>{};
+      for (final entry in rawMeta.entries) {
+        final key = entry.key.toString().trim().toLowerCase();
+        final value = entry.value;
+        if (key.isEmpty) {
+          continue;
+        }
+        if (value is int) {
+          result[key] = value;
+        }
+      }
+      return result;
+    } catch (_) {
+      throw CouldNotGetAllNotesException();
+    }
+  }
+
+  Future<void> setTagColorForUser({
+    required String ownerUserId,
+    required String tag,
+    required int colorValue,
+  }) async {
+    final normalizedTag = tag.trim().toLowerCase();
+    if (normalizedTag.isEmpty) {
+      return;
+    }
+    try {
+      final doc = await _getOrCreateTagDoc(ownerUserId);
+      await tags.doc(doc.id).set({
+        customTagMetaFieldName: {normalizedTag: colorValue},
+      }, SetOptions(merge: true));
+    } catch (_) {
+      throw CouldNotUpdateNoteException();
+    }
+  }
+
+  Future<void> removeCustomTagForUser({
+    required String ownerUserId,
+    required String tag,
+  }) async {
+    final normalizedTag = tag.trim().toLowerCase();
+    if (normalizedTag.isEmpty) {
+      return;
+    }
+    try {
+      final doc = await _getTagDoc(ownerUserId);
+      if (doc == null) {
+        return;
+      }
+      await tags.doc(doc.id).update({
+        customTagsListFieldName: FieldValue.arrayRemove([normalizedTag]),
+        '$customTagMetaFieldName.$normalizedTag': FieldValue.delete(),
+      });
+    } catch (_) {
       throw CouldNotUpdateNoteException();
     }
   }

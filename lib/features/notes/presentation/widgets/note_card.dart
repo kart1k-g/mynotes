@@ -28,12 +28,95 @@ String _relativeTime(DateTime? time) {
 }
 
 class NoteCard extends StatelessWidget {
-  const NoteCard({required this.note, required this.onTap, super.key});
+  const NoteCard({
+    required this.note,
+    required this.onTap,
+    required this.tagColors,
+    this.isGridView = false,
+    this.onTagTap,
+    super.key,
+  });
 
   final CloudNote note;
   final VoidCallback onTap;
+  final Map<String, int> tagColors;
+  final bool isGridView;
+  final ValueChanged<String>? onTagTap;
+
+  static const List<Color> _fallbackTagPalette = [
+    Color(0xFF14B8A6),
+    Color(0xFF10B981),
+    Color(0xFF3B82F6),
+    Color(0xFF8B5CF6),
+    Color(0xFFEC4899),
+    Color(0xFFF97316),
+    Color(0xFFEAB308),
+    Color(0xFFEF4444),
+    Color(0xFF6366F1),
+    Color(0xFF06B6D4),
+    Color(0xFF84CC16),
+    Color(0xFFF59E0B),
+    Color(0xFF0EA5E9),
+    Color(0xFFA855F7),
+    Color(0xFF22C55E),
+    Color(0xFFF43F5E),
+  ];
 
   static String heroTagFor(String documentId) => 'note-hero-$documentId';
+
+  Color _colorForTag(String tag) {
+    final stored = tagColors[tag.trim().toLowerCase()];
+    if (stored != null) {
+      return Color(stored);
+    }
+    return _fallbackTagPalette[tag.hashCode.abs() % _fallbackTagPalette.length];
+  }
+
+  Widget _buildTagChip(String tag) {
+    final color = _colorForTag(tag);
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: () => onTagTap?.call(tag),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 110),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.44), width: 0.7),
+        ),
+        child: Text(
+          '#$tag',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreTagChip(int remaining) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: MyNotesColors.pageGrey,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: MyNotesColors.cardBorder, width: 0.7),
+      ),
+      child: Text(
+        '+$remaining',
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: MyNotesColors.muted,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +125,8 @@ class NoteCard extends StatelessWidget {
     final tags = note.tags.isNotEmpty
         ? note.tags
         : NoteTextCodec.hashtags(note.text);
+    final displayedTags = tags.take(2).toList();
+    final remainingTagCount = tags.length - displayedTags.length;
     final hasMedia = NoteTextCodec.hasAttachmentHint(note.text);
     final timeLabel = _relativeTime(note.updatedAt);
 
@@ -115,50 +200,72 @@ class NoteCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (timeLabel.isNotEmpty) ...[
-                      const Icon(
-                        Icons.schedule_rounded,
-                        size: 15,
-                        color: MyNotesColors.hint,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        timeLabel,
-                        style: const TextStyle(
-                          fontSize: 12,
+                if (isGridView) ...[
+                  if (timeLabel.isNotEmpty)
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 15,
                           color: MyNotesColors.hint,
                         ),
-                      ),
-                    ],
-                    const Spacer(),
-                    if (tags.isNotEmpty) ...[
-                      const Icon(
-                        Icons.sell_outlined,
-                        size: 15,
-                        color: MyNotesColors.teal,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        tags.first,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: MyNotesColors.teal,
-                        ),
-                      ),
-                      if (tags.length > 1)
+                        const SizedBox(width: 4),
                         Text(
-                          ' +${tags.length - 1}',
+                          timeLabel,
                           style: const TextStyle(
                             fontSize: 12,
                             color: MyNotesColors.hint,
                           ),
                         ),
-                    ],
+                      ],
+                    ),
+                  if (tags.isNotEmpty) ...[
+                    if (timeLabel.isNotEmpty) const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final tag in displayedTags) _buildTagChip(tag),
+                          if (remainingTagCount > 0)
+                            _buildMoreTagChip(remainingTagCount),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
+                ] else
+                  Row(
+                    children: [
+                      if (timeLabel.isNotEmpty) ...[
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 15,
+                          color: MyNotesColors.hint,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          timeLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: MyNotesColors.hint,
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      if (tags.isNotEmpty)
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          alignment: WrapAlignment.end,
+                          children: [
+                            for (final tag in displayedTags) _buildTagChip(tag),
+                            if (remainingTagCount > 0)
+                              _buildMoreTagChip(remainingTagCount),
+                          ],
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),

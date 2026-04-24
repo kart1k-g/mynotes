@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/Views/notes/notes_list_view.dart';
+import 'package:mynotes/Views/notes/tags_view.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/enums/menu_actions.dart';
 import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
@@ -27,6 +28,8 @@ class _NotesViewStateState extends State<NotesViewState> {
   String _searchQuery = '';
   bool _recentOnly = false;
   bool _gridView = false;
+  String? _selectedTagFilter;
+  Map<String, int> _tagColors = const {};
 
   String get userId => FirebaseAuthService().currentUser!.id;
 
@@ -34,7 +37,22 @@ class _NotesViewStateState extends State<NotesViewState> {
   void initState() {
     _notesService = FirebaseCloudStorage();
     _searchController.addListener(_onSearchChanged);
+    _loadTagColors();
     super.initState();
+  }
+
+  Future<void> _loadTagColors() async {
+    try {
+      final colors = await _notesService.getTagColorsForUser(
+        ownerUserId: userId,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tagColors = colors;
+      });
+    } catch (_) {}
   }
 
   void _onSearchChanged() {
@@ -44,10 +62,11 @@ class _NotesViewStateState extends State<NotesViewState> {
         return;
       }
       final next = _searchController.text.trim();
-      if (next == _searchQuery) {
+      final normalizedQuery = next.startsWith('#') ? '' : next;
+      if (normalizedQuery == _searchQuery) {
         return;
       }
-      setState(() => _searchQuery = next);
+      setState(() => _searchQuery = normalizedQuery);
     });
   }
 
@@ -80,6 +99,28 @@ class _NotesViewStateState extends State<NotesViewState> {
                   case ConnectionState.waiting:
                     if (snapshot.hasData) {
                       final allNotes = snapshot.data!;
+                      Future<void> openTagsManagement({
+                        String? initialSearchQuery,
+                      }) async {
+                        final selectedTag = await Navigator.of(context)
+                            .push<String>(
+                              MaterialPageRoute(
+                                builder: (_) => TagsScreen(
+                                  notes: allNotes.toList(),
+                                  initialSelectedTag: _selectedTagFilter,
+                                  initialSearchQuery: initialSearchQuery,
+                                ),
+                              ),
+                            );
+                        await _loadTagColors();
+                        if (!context.mounted || selectedTag == null) {
+                          return;
+                        }
+                        setState(() {
+                          _selectedTagFilter = selectedTag;
+                        });
+                      }
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -152,6 +193,23 @@ class _NotesViewStateState extends State<NotesViewState> {
                             child: TextField(
                               controller: _searchController,
                               textInputAction: TextInputAction.search,
+                              onSubmitted: (value) async {
+                                final trimmed = value.trim();
+                                if (!trimmed.startsWith('#')) {
+                                  return;
+                                }
+                                final normalizedTagSearch = trimmed
+                                    .replaceFirst(RegExp(r'^#+'), '')
+                                    .trim()
+                                    .toLowerCase();
+                                if (normalizedTagSearch.isEmpty) {
+                                  return;
+                                }
+                                FocusScope.of(context).unfocus();
+                                await openTagsManagement(
+                                  initialSearchQuery: normalizedTagSearch,
+                                );
+                              },
                               decoration: const InputDecoration(
                                 hintText: 'Search all notes...',
                                 prefixIcon: Icon(
@@ -173,6 +231,73 @@ class _NotesViewStateState extends State<NotesViewState> {
                               ),
                             ),
                           ),
+                          if (_selectedTagFilter != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  12,
+                                  10,
+                                  12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE9F7F4),
+                                  border: Border.all(
+                                    color: MyNotesColors.teal.withValues(
+                                      alpha: 0.45,
+                                    ),
+                                    width: 0.8,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.sell_outlined,
+                                      color: MyNotesColors.teal,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: MyNotesColors.navy,
+                                          ),
+                                          children: [
+                                            const TextSpan(
+                                              text:
+                                                  'Showing notes tagged with\n',
+                                            ),
+                                            TextSpan(
+                                              text: '#$_selectedTagFilter',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedTagFilter = null;
+                                        });
+                                      },
+                                      child: const Text(
+                                        'Clear',
+                                        style: TextStyle(
+                                          color: MyNotesColors.tealDark,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 12),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -221,6 +346,26 @@ class _NotesViewStateState extends State<NotesViewState> {
                                     width: 0.5,
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                ChoiceChip(
+                                  avatar: const Icon(
+                                    Icons.sell_outlined,
+                                    size: 16,
+                                    color: MyNotesColors.muted,
+                                  ),
+                                  avatarBoxConstraints: const BoxConstraints(
+                                    minWidth: 18,
+                                    minHeight: 18,
+                                  ),
+                                  label: const Text('Tags'),
+                                  selected: false,
+                                  onSelected: (_) => openTagsManagement(),
+                                  showCheckmark: false,
+                                  side: const BorderSide(
+                                    color: MyNotesColors.divider,
+                                    width: 0.5,
+                                  ),
+                                ),
                                 const Spacer(),
                                 _ViewToggleIcon(
                                   icon: Icons.view_list_rounded,
@@ -246,6 +391,8 @@ class _NotesViewStateState extends State<NotesViewState> {
                                 searchQuery: _searchQuery,
                                 recentOnly: _recentOnly,
                                 gridView: _gridView,
+                                selectedTagFilter: _selectedTagFilter,
+                                tagColors: _tagColors,
                                 onTap: (note) {
                                   Navigator.of(context).pushNamed(
                                     createOrUpdateNoteRoute,
@@ -261,6 +408,11 @@ class _NotesViewStateState extends State<NotesViewState> {
                                   await _notesService.archiveNote(
                                     documentId: note.documentId,
                                   );
+                                },
+                                onTagTap: (tag) {
+                                  setState(() {
+                                    _selectedTagFilter = tag;
+                                  });
                                 },
                               ),
                             ),

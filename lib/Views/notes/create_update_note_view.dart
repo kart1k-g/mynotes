@@ -46,7 +46,9 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   bool _isSaving = false;
   bool _isSaved = true;
   bool _showExpandedToolbar = false;
-  final Set<String> _tags = <String>{};
+  final Set<String> _selectedTags = <String>{};
+  final Set<String> _availableCustomTags = <String>{};
+  bool _didRequestUserCustomTags = false;
 
   @override
   void initState() {
@@ -96,11 +98,11 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   bool get _isEmptyNote {
     return _titleController.text.trim().isEmpty &&
         _plainBody().isEmpty &&
-        _tags.isEmpty;
+        _selectedTags.isEmpty;
   }
 
   List<String> _normalizedSortedTags() {
-    final list = _tags
+    final list = _selectedTags
         .map((tag) => tag.trim().toLowerCase())
         .where((tag) => tag.isNotEmpty)
         .toSet()
@@ -126,12 +128,44 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
     }
     setState(() {
       if (selected) {
-        _tags.add(normalized);
+        _selectedTags.add(normalized);
+        if (!_defaultTags.contains(normalized)) {
+          _availableCustomTags.add(normalized);
+        }
       } else {
-        _tags.remove(normalized);
+        _selectedTags.remove(normalized);
       }
     });
     _scheduleSave();
+  }
+
+  Future<void> _loadUserCustomTagsIfNeeded() async {
+    if (_didRequestUserCustomTags) {
+      return;
+    }
+    _didRequestUserCustomTags = true;
+
+    final user = FirebaseAuthService().currentUser;
+    if (user == null) {
+      return;
+    }
+
+    try {
+      final storedTags = await _notesService.getCustomTagsForUser(
+        ownerUserId: user.id,
+      );
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _availableCustomTags
+          ..addAll(storedTags)
+          ..addAll(_selectedTags.where((t) => !_defaultTags.contains(t)));
+      });
+    } catch (_) {
+      _didRequestUserCustomTags = false;
+    }
   }
 
   void _showWarningSnackBar(String message) {
@@ -177,7 +211,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
       ),
     );
     if (result != null && result.isNotEmpty) {
-      if (_tags.contains(result)) {
+      if (_selectedTags.contains(result)) {
         _showWarningSnackBar('This tag already exists in this note.');
       } else {
         final user = FirebaseAuthService().currentUser;
@@ -195,7 +229,8 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
             }
 
             setState(() {
-              _tags.add(result);
+              _availableCustomTags.add(result);
+              _selectedTags.add(result);
             });
             _scheduleSave();
 
@@ -240,8 +275,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   }
 
   Widget _buildSingleRowTagsEditor() {
-    final customTags = _tags.where((t) => !_defaultTags.contains(t)).toList()
-      ..sort();
+    final customTags = _availableCustomTags.toList()..sort();
 
     // All tag items: default tags first, then custom tags
     final allTagItems = [
@@ -263,7 +297,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                   for (int i = 0; i < allTagItems.length; i++) ...[
                     _buildTagButton(
                       allTagItems[i].tag,
-                      isSelected: _tags.contains(allTagItems[i].tag),
+                      isSelected: _selectedTags.contains(allTagItems[i].tag),
                       isDefault: allTagItems[i].isDefault,
                     ),
                     if (i < allTagItems.length - 1) const SizedBox(width: 6),
@@ -304,13 +338,15 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
         ),
       );
     } else {
-      return InputChip(
+      return FilterChip(
         label: Text(tag),
-        onDeleted: () => _toggleTag(tag, false),
-        deleteIcon: const Icon(Icons.close_rounded, size: 16),
+        selected: isSelected,
+        onSelected: (selected) => _toggleTag(tag, selected),
+        selectedColor: MyNotesColors.teal.withValues(alpha: 0.14),
+        checkmarkColor: MyNotesColors.teal,
         side: const BorderSide(color: MyNotesColors.divider),
-        labelStyle: const TextStyle(
-          color: MyNotesColors.charcoal,
+        labelStyle: TextStyle(
+          color: isSelected ? MyNotesColors.charcoal : MyNotesColors.muted,
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
@@ -364,7 +400,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
 
   void _deleteNoteIfTextIsEmpty() {
     final note = _note;
-    if (note != null && _composeText().isEmpty && _tags.isEmpty) {
+    if (note != null && _composeText().isEmpty && _selectedTags.isEmpty) {
       _notesService.deleteNote(documentId: note.documentId);
     }
   }
@@ -372,7 +408,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   Future<void> _saveNoteIfTextIsNotEmpty() async {
     final note = _note;
     final text = _composeText();
-    if (note != null && (text.isNotEmpty || _tags.isNotEmpty)) {
+    if (note != null && (text.isNotEmpty || _selectedTags.isNotEmpty)) {
       await _notesService.updateNote(
         documentId: note.documentId,
         text: text,
@@ -552,9 +588,14 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                   _suppressSave = true;
                   final decoded = NoteTextCodec.decode(note.text);
                   _titleController.text = decoded.$1;
-                  _tags
+                  _selectedTags
                     ..clear()
                     ..addAll(note.tags);
+                  _availableCustomTags
+                    ..clear()
+                    ..addAll(
+                      _selectedTags.where((t) => !_defaultTags.contains(t)),
+                    );
                   _quillController.dispose();
                   _quillController = QuillController(
                     document: _documentFromStoredText(note.text),
@@ -563,6 +604,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                   _setupTextControllerListener();
                   _listenersAttached = true;
                   _suppressSave = false;
+                  _loadUserCustomTagsIfNeeded();
                 }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

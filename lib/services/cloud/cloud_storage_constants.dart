@@ -1,5 +1,6 @@
 const ownerUserIdFieldName = "user_id";
 const customTagsListFieldName = "list";
+const customTagMetaFieldName = "meta";
 const textFieldName = "text";
 const tagsFieldName = "tags";
 const searchableTextFieldName = "searchable_text";

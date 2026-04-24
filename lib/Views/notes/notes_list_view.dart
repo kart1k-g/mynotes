@@ -19,6 +19,9 @@ class NotesListView extends StatelessWidget {
     required this.searchQuery,
     required this.recentOnly,
     required this.gridView,
+    required this.selectedTagFilter,
+    required this.tagColors,
+    required this.onTagTap,
   });
 
   final Iterable<CloudNote> notes;
@@ -28,6 +31,9 @@ class NotesListView extends StatelessWidget {
   final String searchQuery;
   final bool recentOnly;
   final bool gridView;
+  final String? selectedTagFilter;
+  final Map<String, int> tagColors;
+  final ValueChanged<String> onTagTap;
 
   Iterable<CloudNote> get _filtered {
     final q = NoteTextCodec.normalizeForSearch(searchQuery);
@@ -40,9 +46,19 @@ class NotesListView extends StatelessWidget {
         }
       }
       if (q.isEmpty) {
+        if (selectedTagFilter == null || selectedTagFilter!.isEmpty) {
+          return true;
+        }
+        return n.tags.contains(selectedTagFilter);
+      }
+      final matchesSearch = n.searchableText.contains(q);
+      if (!matchesSearch) {
+        return false;
+      }
+      if (selectedTagFilter == null || selectedTagFilter!.isEmpty) {
         return true;
       }
-      return n.searchableText.contains(q);
+      return n.tags.contains(selectedTagFilter);
     });
   }
 
@@ -50,9 +66,13 @@ class NotesListView extends StatelessWidget {
   Widget build(BuildContext context) {
     final list = _filtered.toList();
     if (list.isEmpty) {
+      final hasTagFilter =
+          selectedTagFilter != null && selectedTagFilter!.isNotEmpty;
       return Center(
         child: Text(
-          searchQuery.trim().isEmpty
+          hasTagFilter
+              ? 'No notes found for #$selectedTagFilter.'
+              : searchQuery.trim().isEmpty
               ? (recentOnly
                     ? 'No notes from the last 7 days.'
                     : 'No notes yet.')
@@ -87,7 +107,13 @@ class NotesListView extends StatelessWidget {
                 onDeleteNote: onDeleteNote,
                 onArchiveNote: onArchiveNote,
                 child: SizedBox.expand(
-                  child: NoteCard(note: note, onTap: () => onTap(note)),
+                  child: NoteCard(
+                    note: note,
+                    onTap: () => onTap(note),
+                    tagColors: tagColors,
+                    isGridView: true,
+                    onTagTap: onTagTap,
+                  ),
                 ),
               );
             },
@@ -106,7 +132,13 @@ class NotesListView extends StatelessWidget {
           note: note,
           onDeleteNote: onDeleteNote,
           onArchiveNote: onArchiveNote,
-          child: NoteCard(note: note, onTap: () => onTap(note)),
+          child: NoteCard(
+            note: note,
+            onTap: () => onTap(note),
+            tagColors: tagColors,
+            isGridView: false,
+            onTagTap: onTagTap,
+          ),
         );
       },
     );
