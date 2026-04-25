@@ -45,7 +45,6 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   bool _listenersAttached = false;
   bool _isSaving = false;
   bool _isSaved = true;
-  bool _showExpandedToolbar = false;
   final Set<String> _selectedTags = <String>{};
   final Set<String> _availableCustomTags = <String>{};
   bool _didRequestUserCustomTags = false;
@@ -625,7 +624,7 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                             child: QuillSimpleToolbar(
                               controller: _quillController,
                               config: QuillSimpleToolbarConfig(
-                                multiRowsDisplay: _showExpandedToolbar,
+                                multiRowsDisplay: false,
                                 showSubscript: false,
                                 showSuperscript: false,
                                 showSearchButton: false,
@@ -634,30 +633,9 @@ class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            tooltip: _showExpandedToolbar
-                                ? 'Collapse toolbar'
-                                : 'Show all toolbar options',
-                            onPressed: () {
-                              setState(() {
-                                _showExpandedToolbar = !_showExpandedToolbar;
-                              });
-                            },
-                            icon: Icon(
-                              _showExpandedToolbar
-                                  ? Icons.arrow_drop_up_rounded
-                                  : Icons.arrow_drop_down_rounded,
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                    if (_showExpandedToolbar)
-                      const Divider(
-                        height: 0.5,
-                        thickness: 0.5,
-                        color: MyNotesColors.divider,
-                      ),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
