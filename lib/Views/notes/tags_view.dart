@@ -53,6 +53,7 @@ class _TagsScreenState extends State<TagsScreen> {
   final TextEditingController _quickAddController = TextEditingController();
 
   String _search = '';
+  int? _quickAddColorValue;
   final Map<String, int> _tagColors = {};
   Set<String> _customTags = {};
   Set<String> _archivedTags = {};
@@ -140,30 +141,32 @@ class _TagsScreenState extends State<TagsScreen> {
       return;
     }
     await _storage.addCustomTagForUser(ownerUserId: user.id, tag: normalized);
+    final selectedColorValue =
+        _quickAddColorValue ??
+        _palette[normalized.hashCode.abs() % _palette.length].toARGB32();
+    await _storage.setTagColorForUser(
+      ownerUserId: user.id,
+      tag: normalized,
+      colorValue: selectedColorValue,
+    );
     if (!mounted) {
       return;
     }
     setState(() {
       _customTags.add(normalized);
-      _tagColors.putIfAbsent(
-        normalized,
-        () => _palette[normalized.hashCode.abs() % _palette.length].toARGB32(),
-      );
+      _tagColors[normalized] = selectedColorValue;
+      _quickAddColorValue = null;
     });
     _quickAddController.clear();
   }
 
-  Future<void> _pickColorForTag(String tag) async {
-    final user = FirebaseAuthService().currentUser;
-    if (user == null) {
-      return;
-    }
-    final selectedValue = await showModalBottomSheet<int>(
+  Future<int?> _showColorPickerSheet({required int initialColorValue}) async {
+    return showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        int active = _tagColors[tag] ?? _palette.first.toARGB32();
+        int active = initialColorValue;
         return StatefulBuilder(
           builder: (context, setLocalState) {
             return Container(
@@ -266,6 +269,16 @@ class _TagsScreenState extends State<TagsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _pickColorForTag(String tag) async {
+    final user = FirebaseAuthService().currentUser;
+    if (user == null) {
+      return;
+    }
+    final selectedValue = await _showColorPickerSheet(
+      initialColorValue: _tagColors[tag] ?? _palette.first.toARGB32(),
+    );
     if (selectedValue == null) {
       return;
     }
@@ -282,25 +295,41 @@ class _TagsScreenState extends State<TagsScreen> {
     });
   }
 
-  Future<void> _deleteTag(String tag) async {
+  Future<void> _pickQuickAddColor() async {
+    final selectedValue = await _showColorPickerSheet(
+      initialColorValue: _quickAddColorValue ?? _palette.first.toARGB32(),
+    );
+    if (selectedValue == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _quickAddColorValue = selectedValue;
+    });
+  }
+
+  Future<bool> _deleteTag(String tag, {bool deleteTaggedNotes = false}) async {
     final user = FirebaseAuthService().currentUser;
     if (user == null) {
-      return;
+      return false;
+    }
+    if (deleteTaggedNotes) {
+      await _storage.deleteNotesByTag(ownerUserId: user.id, tag: tag);
     }
     await _storage.removeCustomTagForUser(ownerUserId: user.id, tag: tag);
     if (!mounted) {
-      return;
+      return false;
     }
     setState(() {
       _customTags.remove(tag);
       _tagColors.remove(tag);
     });
+    return true;
   }
 
-  Future<void> _archiveTag(String tag) async {
+  Future<bool> _archiveTag(String tag) async {
     final user = FirebaseAuthService().currentUser;
     if (user == null) {
-      return;
+      return false;
     }
     final option = await showDialog<String>(
       context: context,
@@ -326,7 +355,7 @@ class _TagsScreenState extends State<TagsScreen> {
       },
     );
     if (option == null) {
-      return;
+      return false;
     }
     await _storage.setTagArchived(
       ownerUserId: user.id,
@@ -335,11 +364,12 @@ class _TagsScreenState extends State<TagsScreen> {
       archiveAssociatedNotes: option == 'tag-and-notes',
     );
     if (!mounted) {
-      return;
+      return false;
     }
     setState(() {
       _archivedTags.add(tag);
     });
+    return true;
   }
 
   @override
@@ -357,7 +387,6 @@ class _TagsScreenState extends State<TagsScreen> {
     final visible = entries
         .where((e) => _search.isEmpty || e.key.contains(_search))
         .toList();
-    final mostUsed = entries.take(3).toList();
 
     Color colorFor(String tag) {
       final stored = _tagColors[tag];
@@ -420,6 +449,20 @@ class _TagsScreenState extends State<TagsScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
+                  IconButton.filledTonal(
+                    onPressed: _pickQuickAddColor,
+                    tooltip: 'Pick tag color',
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(52, 52),
+                    ),
+                    icon: Icon(
+                      Icons.palette_rounded,
+                      color: _quickAddColorValue != null
+                          ? Color(_quickAddColorValue!)
+                          : MyNotesColors.muted,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   FilledButton(
                     onPressed: _addQuickTag,
                     style: FilledButton.styleFrom(
@@ -442,35 +485,6 @@ class _TagsScreenState extends State<TagsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                   children: [
-                    const Text(
-                      'Most Used',
-                      style: TextStyle(
-                        color: MyNotesColors.muted,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 34,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ...mostUsed.map((entry) {
-                      final color = colorFor(entry.key);
-                      return _TagTile(
-                        tag: entry.key,
-                        count: entry.value,
-                        color: color,
-                        showMenu: false,
-                        onTap: () => Navigator.of(context).pop(entry.key),
-                      );
-                    }),
-                    const SizedBox(height: 14),
-                    Text(
-                      'All Tags (${visible.length})',
-                      style: const TextStyle(
-                        color: MyNotesColors.muted,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 32,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     ...visible.map((entry) {
                       final color = colorFor(entry.key);
                       return _TagTile(
@@ -481,6 +495,8 @@ class _TagsScreenState extends State<TagsScreen> {
                         onTap: () => Navigator.of(context).pop(entry.key),
                         onEditColor: () => _pickColorForTag(entry.key),
                         onDelete: () => _deleteTag(entry.key),
+                        onDeleteWithNotes: () =>
+                            _deleteTag(entry.key, deleteTaggedNotes: true),
                         onArchive: () => _archiveTag(entry.key),
                       );
                     }),
@@ -504,6 +520,7 @@ class _TagTile extends StatelessWidget {
     required this.onTap,
     this.onEditColor,
     this.onDelete,
+    this.onDeleteWithNotes,
     this.onArchive,
   });
 
@@ -513,12 +530,64 @@ class _TagTile extends StatelessWidget {
   final bool showMenu;
   final VoidCallback onTap;
   final VoidCallback? onEditColor;
-  final VoidCallback? onDelete;
-  final VoidCallback? onArchive;
+  final Future<bool> Function()? onDelete;
+  final Future<bool> Function()? onDeleteWithNotes;
+  final Future<bool> Function()? onArchive;
+
+  Future<String?> _askDeleteScope(BuildContext context) async {
+    final selection = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Delete tag'),
+          content: Text(
+            count > 0
+                ? 'Choose what to delete for #$tag.'
+                : 'Delete #$tag from your tags list?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('tag-only'),
+              child: const Text('Delete Tag'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+              ),
+              onPressed: () => Navigator.of(ctx).pop('tag-and-notes'),
+              child: Text(count > 0 ? 'Delete Tag + Notes' : 'Delete'),
+            ),
+          ],
+        );
+      },
+    );
+    if (count == 0 && selection == 'tag-and-notes') {
+      return 'tag-only';
+    }
+    return selection;
+  }
+
+  Future<bool> _runDeleteFlow(BuildContext context) async {
+    final deleteScope = await _askDeleteScope(context);
+    if (deleteScope == null) {
+      return false;
+    }
+    if (deleteScope == 'tag-and-notes' && onDeleteWithNotes != null) {
+      return onDeleteWithNotes!();
+    }
+    if (onDelete == null) {
+      return false;
+    }
+    return onDelete!();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final card = Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: Colors.white,
@@ -569,13 +638,13 @@ class _TagTile extends StatelessWidget {
                 ),
                 if (showMenu)
                   PopupMenuButton<String>(
-                    onSelected: (value) {
+                    onSelected: (value) async {
                       if (value == 'color') {
                         onEditColor?.call();
                       } else if (value == 'archive') {
-                        onArchive?.call();
+                        await onArchive?.call();
                       } else if (value == 'delete') {
-                        onDelete?.call();
+                        await _runDeleteFlow(context);
                       }
                     },
                     itemBuilder: (context) => const [
@@ -583,7 +652,10 @@ class _TagTile extends StatelessWidget {
                         value: 'color',
                         child: Text('Change color'),
                       ),
-                      PopupMenuItem(value: 'archive', child: Text('Archive tag')),
+                      PopupMenuItem(
+                        value: 'archive',
+                        child: Text('Archive tag'),
+                      ),
                       PopupMenuItem(value: 'delete', child: Text('Delete tag')),
                     ],
                     icon: const Icon(
@@ -613,6 +685,83 @@ class _TagTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+
+    if (!showMenu || onArchive == null || onDelete == null) {
+      return card;
+    }
+
+    return Dismissible(
+      key: ValueKey('tag-tile-$tag'),
+      direction: DismissDirection.horizontal,
+      background: const _TagSwipeBg(
+        alignLeft: true,
+        icon: Icons.archive_outlined,
+        label: 'Archive',
+        color: MyNotesColors.muted,
+      ),
+      secondaryBackground: _TagSwipeBg(
+        alignLeft: false,
+        icon: Icons.delete_forever_rounded,
+        label: 'Delete',
+        color: Colors.red.shade700,
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          return onArchive!();
+        }
+        return _runDeleteFlow(context);
+      },
+      child: card,
+    );
+  }
+}
+
+class _TagSwipeBg extends StatelessWidget {
+  const _TagSwipeBg({
+    required this.alignLeft,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final bool alignLeft;
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      padding: EdgeInsets.only(
+        left: alignLeft ? 20 : 0,
+        right: alignLeft ? 0 : 20,
+      ),
+      alignment: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
+      child: Row(
+        mainAxisAlignment: alignLeft
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
+        children: [
+          if (!alignLeft)
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            ),
+          if (!alignLeft) const SizedBox(width: 8),
+          Icon(icon, color: color),
+          if (alignLeft) const SizedBox(width: 8),
+          if (alignLeft)
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            ),
+        ],
       ),
     );
   }

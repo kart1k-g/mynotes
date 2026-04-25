@@ -166,6 +166,27 @@ class FirebaseCloudStorage {
     }
   }
 
+  Future<void> deleteNotesByTag({
+    required String ownerUserId,
+    required String tag,
+  }) async {
+    final normalizedTag = tag.trim().toLowerCase();
+    if (normalizedTag.isEmpty) {
+      return;
+    }
+    try {
+      final notesWithTag = await notes
+          .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+          .where(tagsFieldName, arrayContains: normalizedTag)
+          .get();
+      for (final note in notesWithTag.docs) {
+        await this.notes.doc(note.id).delete();
+      }
+    } catch (_) {
+      throw CouldNotDeleteNoteException();
+    }
+  }
+
   Future<List<String>> getCustomTagsForUser({
     required String ownerUserId,
   }) async {
