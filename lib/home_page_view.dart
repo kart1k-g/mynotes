@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mynotes/Views/login_view.dart';
+import 'package:mynotes/Views/auth/login_view.dart';
 import 'package:mynotes/Views/notes/notes_view.dart';
-import 'package:mynotes/Views/register_view.dart';
-import 'package:mynotes/Views/reset_password_view.dart';
-import 'package:mynotes/Views/verify_email_view.dart';
+import 'package:mynotes/Views/auth/register_view.dart';
+import 'package:mynotes/Views/auth/reset_password_view.dart';
+import 'package:mynotes/Views/auth/verify_email_view.dart';
 import 'package:mynotes/helpers/loading/loading_screen.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 

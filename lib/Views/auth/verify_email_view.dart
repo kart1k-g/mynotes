@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mynotes/Views/widgets/auth_primary_btn.dart';
-import 'package:mynotes/Views/widgets/auth_ui.dart';
+import 'package:mynotes/Views/auth/widgets/auth_primary_btn.dart';
+import 'package:mynotes/Views/auth/widgets/auth_ui.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 
 class VerifyEmailView extends StatefulWidget {

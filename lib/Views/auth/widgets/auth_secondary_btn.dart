@@ -22,6 +22,7 @@ class AuthSecondaryButton extends StatelessWidget {
         side: const BorderSide(color: Color(0xFFE1EAF2)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        backgroundColor: Colors.white,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

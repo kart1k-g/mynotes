@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mynotes/Views/widgets/auth_input_decoration.dart';
-import 'package:mynotes/Views/widgets/auth_primary_btn.dart';
-import 'package:mynotes/Views/widgets/auth_secondary_btn.dart';
-import 'package:mynotes/Views/widgets/auth_section_divider.dart';
+import 'package:mynotes/Views/auth/widgets/auth_pages_redirect.dart';
+import 'package:mynotes/Views/auth/widgets/auth_primary_btn.dart';
+import 'package:mynotes/Views/auth/widgets/auth_secondary_btn.dart';
+import 'package:mynotes/Views/auth/widgets/auth_section_divider.dart';
 import 'package:mynotes/utilites/cards/inline_alert_card.dart';
-import 'package:mynotes/Views/widgets/auth_ui.dart';
+import 'package:mynotes/Views/auth/widgets/auth_ui.dart';
 import 'package:mynotes/enums/auth_providers_types.dart';
 import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
+import 'package:mynotes/Views/auth/widgets/auth_input.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -85,74 +86,62 @@ class _RegisterViewState extends State<RegisterView> {
               return const SizedBox.shrink();
             },
           ),
-          TextField(
+          AuthInputField(
             controller: _fullName,
-            autocorrect: false,
+            label: "Full Name",
+            hintText: "Tony Stark",
+            icon: Icons.person_outline_rounded,
             textCapitalization: TextCapitalization.words,
-            decoration: authInputDecoration(
-              label: 'Full Name',
-              hintText: 'Jane Doe',
-              icon: Icons.person_outline_rounded,
-            ),
           ),
           const SizedBox(height: 18),
-          TextField(
+          AuthInputField(
             controller: _email,
-            autocorrect: false,
+            label: 'Email Address',
+            hintText: 'name@email.com',
+            icon: Icons.mail_outline_rounded,
             keyboardType: TextInputType.emailAddress,
-            decoration: authInputDecoration(
-              label: 'Email Address',
-              hintText: 'name@email.com',
-              icon: Icons.mail_outline_rounded,
-            ),
           ),
           const SizedBox(height: 18),
-          TextField(
+          AuthInputField(
             controller: _password,
+            label: "Password",
+            hintText: "Minimum 8 characters",
+            icon: Icons.lock_outline_rounded,
             obscureText: _isPasswordHidden,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: authInputDecoration(
-              label: 'Password',
-              hintText: 'Minimum 8 characters',
-              icon: Icons.lock_outline_rounded,
-              suffixIcon: IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isPasswordHidden = !_isPasswordHidden;
-                  });
-                },
-                icon: Icon(
-                  _isPasswordHidden
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: const Color(0xFF99A9BF),
-                ),
+            enableSuggestion: false,
+            suffixIcon: IconButton(
+              onPressed: () {
+                setState(() {
+                  _isPasswordHidden = !_isPasswordHidden;
+                });
+              },
+              icon: Icon(
+                _isPasswordHidden
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: const Color(0xFF99A9BF),
               ),
             ),
           ),
           const SizedBox(height: 18),
-          TextField(
+          AuthInputField(
             controller: _confirmPassword,
+            label: "Confirm Password",
+            hintText: "Retype Password",
+            icon: Icons.lock_outline_rounded,
             obscureText: _isConfirmPasswordHidden,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: authInputDecoration(
-              label: 'Confirm Password',
-              hintText: 'Retype password',
-              icon: Icons.lock_outline_rounded,
-              suffixIcon: IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isConfirmPasswordHidden = !_isConfirmPasswordHidden;
-                  });
-                },
-                icon: Icon(
-                  _isConfirmPasswordHidden
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: const Color(0xFF99A9BF),
-                ),
+            enableSuggestion: false,
+            suffixIcon: IconButton(
+              onPressed: () {
+                setState(() {
+                  _isConfirmPasswordHidden = !_isConfirmPasswordHidden;
+                });
+              },
+              icon: Icon(
+                _isConfirmPasswordHidden
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: const Color(0xFF99A9BF),
               ),
             ),
           ),
@@ -230,29 +219,11 @@ class _RegisterViewState extends State<RegisterView> {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Already have an account? ',
-                style: TextStyle(color: Color(0xFF506482), fontSize: 16),
-              ),
-              TextButton(
-                onPressed: () {
-                  context.read<AuthBloc>().add(
-                    AuthLogOutRequested(displayRegisterView: false),
-                  );
-                },
-                child: const Text(
-                  'Login',
-                  style: TextStyle(
-                    color: Color(0xFF009C8A),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 19,
-                  ),
-                ),
-              ),
-            ],
+          AuthPagesRedirect(
+            text: 'Already have an account? ',
+            redirectText: "Login",
+            pageContext: context,
+            displayRegisterView: false,
           ),
         ],
       ),

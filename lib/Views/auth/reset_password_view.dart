@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mynotes/Views/widgets/auth_input_decoration.dart';
-import 'package:mynotes/Views/widgets/auth_primary_btn.dart';
-import 'package:mynotes/Views/widgets/auth_ui.dart';
+import 'package:mynotes/Views/auth/widgets/auth_input.dart';
+import 'package:mynotes/Views/auth/widgets/auth_primary_btn.dart';
+import 'package:mynotes/Views/auth/widgets/auth_ui.dart';
 import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/utilites/cards/inline_alert_card.dart';
@@ -75,17 +75,13 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
               return const SizedBox.shrink();
             },
           ),
-          TextField(
-            keyboardType: TextInputType.emailAddress,
+          AuthInputField(
             controller: _controller,
-            autofocus: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            decoration: authInputDecoration(
-              label: 'Email Address',
-              hintText: 'name@email.com',
-              icon: Icons.mail_outline_rounded,
-            ),
+            label: 'Email Address',
+            hintText: 'name@email.com',
+            icon: Icons.mail_outline_rounded,
+            autofoucs: true,
+            keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 24),
           AuthPrimaryButton(
