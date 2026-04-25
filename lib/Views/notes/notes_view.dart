@@ -6,6 +6,7 @@ import 'package:mynotes/Views/notes/notes_list_view.dart';
 import 'package:mynotes/Views/notes/tags_view.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/enums/menu_actions.dart';
+import 'package:mynotes/features/notes/presentation/archive_view.dart';
 import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/firebase_auth_service.dart';
@@ -303,70 +304,106 @@ class _NotesViewStateState extends State<NotesViewState> {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Row(
                               children: [
-                                ChoiceChip(
-                                  label: const Text('All Notes'),
-                                  selected: !_recentOnly,
-                                  onSelected: (_) {
-                                    setState(() => _recentOnly = false);
-                                  },
-                                  selectedColor: const Color(
-                                    0xFFE8EEF5,
-                                  ).withValues(alpha: 0.9),
-                                  labelStyle: TextStyle(
-                                    color: !_recentOnly
-                                        ? MyNotesColors.charcoal
-                                        : MyNotesColors.muted,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  showCheckmark: false,
-                                  side: const BorderSide(
-                                    color: MyNotesColors.divider,
-                                    width: 0.5,
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        ChoiceChip(
+                                          label: const Text('All Notes'),
+                                          selected: !_recentOnly,
+                                          onSelected: (_) {
+                                            setState(() => _recentOnly = false);
+                                          },
+                                          selectedColor: const Color(
+                                            0xFFE8EEF5,
+                                          ).withValues(alpha: 0.9),
+                                          labelStyle: TextStyle(
+                                            color: !_recentOnly
+                                                ? MyNotesColors.charcoal
+                                                : MyNotesColors.muted,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          showCheckmark: false,
+                                          side: const BorderSide(
+                                            color: MyNotesColors.divider,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ChoiceChip(
+                                          label: const Text('Recent'),
+                                          selected: _recentOnly,
+                                          onSelected: (_) {
+                                            setState(() => _recentOnly = true);
+                                          },
+                                          selectedColor: const Color(
+                                            0xFFE8EEF5,
+                                          ).withValues(alpha: 0.9),
+                                          labelStyle: TextStyle(
+                                            color: _recentOnly
+                                                ? MyNotesColors.charcoal
+                                                : MyNotesColors.muted,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          showCheckmark: false,
+                                          side: const BorderSide(
+                                            color: MyNotesColors.divider,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ChoiceChip(
+                                          avatar: const Icon(
+                                            Icons.sell_outlined,
+                                            size: 16,
+                                            color: MyNotesColors.muted,
+                                          ),
+                                          avatarBoxConstraints:
+                                              const BoxConstraints(
+                                                minWidth: 18,
+                                                minHeight: 18,
+                                              ),
+                                          label: const Text('Tags'),
+                                          selected: false,
+                                          onSelected: (_) =>
+                                              openTagsManagement(),
+                                          showCheckmark: false,
+                                          side: const BorderSide(
+                                            color: MyNotesColors.divider,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ChoiceChip(
+                                          avatar: const Icon(
+                                            Icons.archive_outlined,
+                                            size: 16,
+                                            color: MyNotesColors.muted,
+                                          ),
+                                          avatarBoxConstraints:
+                                              const BoxConstraints(
+                                                minWidth: 18,
+                                                minHeight: 18,
+                                              ),
+                                          label: const Text('Archive'),
+                                          selected: false,
+                                          onSelected: (_) {
+                                            Navigator.of(
+                                              context,
+                                            ).push(ArchiveScreen.route());
+                                          },
+                                          showCheckmark: false,
+                                          side: const BorderSide(
+                                            color: MyNotesColors.divider,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                ChoiceChip(
-                                  label: const Text('Recent'),
-                                  selected: _recentOnly,
-                                  onSelected: (_) {
-                                    setState(() => _recentOnly = true);
-                                  },
-                                  selectedColor: const Color(
-                                    0xFFE8EEF5,
-                                  ).withValues(alpha: 0.9),
-                                  labelStyle: TextStyle(
-                                    color: _recentOnly
-                                        ? MyNotesColors.charcoal
-                                        : MyNotesColors.muted,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  showCheckmark: false,
-                                  side: const BorderSide(
-                                    color: MyNotesColors.divider,
-                                    width: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ChoiceChip(
-                                  avatar: const Icon(
-                                    Icons.sell_outlined,
-                                    size: 16,
-                                    color: MyNotesColors.muted,
-                                  ),
-                                  avatarBoxConstraints: const BoxConstraints(
-                                    minWidth: 18,
-                                    minHeight: 18,
-                                  ),
-                                  label: const Text('Tags'),
-                                  selected: false,
-                                  onSelected: (_) => openTagsManagement(),
-                                  showCheckmark: false,
-                                  side: const BorderSide(
-                                    color: MyNotesColors.divider,
-                                    width: 0.5,
-                                  ),
-                                ),
-                                const Spacer(),
                                 _ViewToggleIcon(
                                   icon: Icons.view_list_rounded,
                                   selected: !_gridView,

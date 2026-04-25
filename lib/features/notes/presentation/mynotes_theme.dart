@@ -11,6 +11,10 @@ abstract final class MyNotesColors {
   static const Color pageGrey = Color(0xFFF4F6F9);
   static const Color divider = Color(0xFFE4EDF5);
   static const Color cardBorder = Color(0xFFE1E8F0);
+  static const Color archiveBg = Color(0xFFF3F4F6);
+  static const Color archiveCard = Color(0xFFF6F7FA);
+  static const Color archiveText = Color(0xFF4B596F);
+  static const Color archiveHint = Color(0xFF8C98AA);
 }
 
 ThemeData buildMyNotesTheme() {

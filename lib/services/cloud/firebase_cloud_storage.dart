@@ -38,6 +38,8 @@ class FirebaseCloudStorage {
       ownerUserIdFieldName: ownerUserId,
       customTagsListFieldName: const <String>[],
       customTagMetaFieldName: const <String, dynamic>{},
+      archivedTagsListFieldName: const <String>[],
+      archivedTagTimesFieldName: const <String, dynamic>{},
     });
     final createdSnap = await created.get();
     return createdSnap;
@@ -91,6 +93,24 @@ class FirebaseCloudStorage {
     return allNotes;
   }
 
+  Stream<Iterable<CloudNote>> archivedNotes({required String ownerUserId}) {
+    return notes
+        .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+        .snapshots()
+        .map((event) {
+          final list = event.docs
+              .map((doc) => CloudNote.fromSnapshot(doc))
+              .where((note) => note.isArchived)
+              .toList();
+          list.sort((a, b) {
+            final ta = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final tb = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return tb.compareTo(ta);
+          });
+          return list;
+        });
+  }
+
   Future<void> updateNote({
     required String documentId,
     required String text,
@@ -123,6 +143,17 @@ class FirebaseCloudStorage {
     try {
       await notes.doc(documentId).update({isArchivedFieldName: true});
     } catch (e) {
+      throw CouldNotUpdateNoteException();
+    }
+  }
+
+  Future<void> restoreNote({required String documentId}) async {
+    try {
+      await notes.doc(documentId).update({
+        isArchivedFieldName: false,
+        updatedAtFieldName: FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
       throw CouldNotUpdateNoteException();
     }
   }
@@ -220,6 +251,34 @@ class FirebaseCloudStorage {
     }
   }
 
+  Stream<Map<String, int>> tagColors({required String ownerUserId}) {
+    return tags
+        .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+        .snapshots()
+        .map((event) {
+          if (event.docs.isEmpty) {
+            return const <String, int>{};
+          }
+          final data = event.docs.first.data();
+          final rawMeta = data[customTagMetaFieldName];
+          if (rawMeta is! Map) {
+            return const <String, int>{};
+          }
+          final result = <String, int>{};
+          for (final entry in rawMeta.entries) {
+            final key = entry.key.toString().trim().toLowerCase();
+            final value = entry.value;
+            if (key.isEmpty) {
+              continue;
+            }
+            if (value is int) {
+              result[key] = value;
+            }
+          }
+          return result;
+        });
+  }
+
   Future<void> setTagColorForUser({
     required String ownerUserId,
     required String tag,
@@ -256,6 +315,97 @@ class FirebaseCloudStorage {
         customTagsListFieldName: FieldValue.arrayRemove([normalizedTag]),
         '$customTagMetaFieldName.$normalizedTag': FieldValue.delete(),
       });
+    } catch (_) {
+      throw CouldNotUpdateNoteException();
+    }
+  }
+
+  Stream<Set<String>> archivedTags({required String ownerUserId}) {
+    return tags
+        .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+        .snapshots()
+        .map((event) {
+          if (event.docs.isEmpty) {
+            return <String>{};
+          }
+          final data = event.docs.first.data();
+          final list =
+              (data[archivedTagsListFieldName] as List<dynamic>? ?? const [])
+                  .whereType<String>()
+                  .map((tag) => tag.trim().toLowerCase())
+                  .where((tag) => tag.isNotEmpty)
+                  .toSet();
+          return list;
+        });
+  }
+
+  Stream<Map<String, DateTime>> archivedTagTimes({
+    required String ownerUserId,
+  }) {
+    return tags
+        .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+        .snapshots()
+        .map((event) {
+          if (event.docs.isEmpty) {
+            return const <String, DateTime>{};
+          }
+          final data = event.docs.first.data();
+          final raw = data[archivedTagTimesFieldName];
+          if (raw is! Map) {
+            return const <String, DateTime>{};
+          }
+          final result = <String, DateTime>{};
+          for (final entry in raw.entries) {
+            final key = entry.key.toString().trim().toLowerCase();
+            final value = entry.value;
+            if (key.isEmpty) {
+              continue;
+            }
+            if (value is Timestamp) {
+              result[key] = value.toDate();
+            }
+          }
+          return result;
+        });
+  }
+
+  Future<void> setTagArchived({
+    required String ownerUserId,
+    required String tag,
+    required bool archived,
+    bool archiveAssociatedNotes = false,
+  }) async {
+    final normalizedTag = tag.trim().toLowerCase();
+    if (normalizedTag.isEmpty) {
+      return;
+    }
+    try {
+      final doc = await _getOrCreateTagDoc(ownerUserId);
+      final tagDocRef = tags.doc(doc.id);
+      if (archived) {
+        await tagDocRef.set({
+          archivedTagsListFieldName: FieldValue.arrayUnion([normalizedTag]),
+          '$archivedTagTimesFieldName.$normalizedTag':
+              FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        if (archiveAssociatedNotes) {
+          final notesWithTag = await notes
+              .where(ownerUserIdFieldName, isEqualTo: ownerUserId)
+              .where(tagsFieldName, arrayContains: normalizedTag)
+              .get();
+          for (final note in notesWithTag.docs) {
+            await this.notes.doc(note.id).update({
+              isArchivedFieldName: true,
+              updatedAtFieldName: FieldValue.serverTimestamp(),
+            });
+          }
+        }
+      } else {
+        await tagDocRef.update({
+          archivedTagsListFieldName: FieldValue.arrayRemove([normalizedTag]),
+          '$archivedTagTimesFieldName.$normalizedTag': FieldValue.delete(),
+        });
+      }
     } catch (_) {
       throw CouldNotUpdateNoteException();
     }

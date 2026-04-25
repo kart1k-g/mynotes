@@ -55,6 +55,7 @@ class _TagsScreenState extends State<TagsScreen> {
   String _search = '';
   final Map<String, int> _tagColors = {};
   Set<String> _customTags = {};
+  Set<String> _archivedTags = {};
 
   @override
   void initState() {
@@ -87,11 +88,13 @@ class _TagsScreenState extends State<TagsScreen> {
     try {
       final custom = await _storage.getCustomTagsForUser(ownerUserId: user.id);
       final colors = await _storage.getTagColorsForUser(ownerUserId: user.id);
+      final archived = await _storage.archivedTags(ownerUserId: user.id).first;
       if (!mounted) {
         return;
       }
       setState(() {
         _customTags = custom.toSet();
+        _archivedTags = archived;
         _tagColors
           ..clear()
           ..addAll(colors);
@@ -103,13 +106,22 @@ class _TagsScreenState extends State<TagsScreen> {
     final counts = <String, int>{};
     for (final note in widget.notes) {
       for (final tag in note.tags) {
+        if (_archivedTags.contains(tag)) {
+          continue;
+        }
         counts[tag] = (counts[tag] ?? 0) + 1;
       }
     }
     for (final tag in _defaultTags) {
+      if (_archivedTags.contains(tag)) {
+        continue;
+      }
       counts.putIfAbsent(tag, () => 0);
     }
     for (final tag in _customTags) {
+      if (_archivedTags.contains(tag)) {
+        continue;
+      }
       counts.putIfAbsent(tag, () => 0);
     }
     return counts;
@@ -285,6 +297,51 @@ class _TagsScreenState extends State<TagsScreen> {
     });
   }
 
+  Future<void> _archiveTag(String tag) async {
+    final user = FirebaseAuthService().currentUser;
+    if (user == null) {
+      return;
+    }
+    final option = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Archive tag'),
+          content: Text('How should #$tag be archived?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('tag-only'),
+              child: const Text('Archive tag only'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop('tag-and-notes'),
+              child: const Text('Archive tag + notes'),
+            ),
+          ],
+        );
+      },
+    );
+    if (option == null) {
+      return;
+    }
+    await _storage.setTagArchived(
+      ownerUserId: user.id,
+      tag: tag,
+      archived: true,
+      archiveAssociatedNotes: option == 'tag-and-notes',
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _archivedTags.add(tag);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final counts = _tagCounts();
@@ -424,6 +481,7 @@ class _TagsScreenState extends State<TagsScreen> {
                         onTap: () => Navigator.of(context).pop(entry.key),
                         onEditColor: () => _pickColorForTag(entry.key),
                         onDelete: () => _deleteTag(entry.key),
+                        onArchive: () => _archiveTag(entry.key),
                       );
                     }),
                   ],
@@ -446,6 +504,7 @@ class _TagTile extends StatelessWidget {
     required this.onTap,
     this.onEditColor,
     this.onDelete,
+    this.onArchive,
   });
 
   final String tag;
@@ -455,6 +514,7 @@ class _TagTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onEditColor;
   final VoidCallback? onDelete;
+  final VoidCallback? onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -512,6 +572,8 @@ class _TagTile extends StatelessWidget {
                     onSelected: (value) {
                       if (value == 'color') {
                         onEditColor?.call();
+                      } else if (value == 'archive') {
+                        onArchive?.call();
                       } else if (value == 'delete') {
                         onDelete?.call();
                       }
@@ -521,6 +583,7 @@ class _TagTile extends StatelessWidget {
                         value: 'color',
                         child: Text('Change color'),
                       ),
+                      PopupMenuItem(value: 'archive', child: Text('Archive tag')),
                       PopupMenuItem(value: 'delete', child: Text('Delete tag')),
                     ],
                     icon: const Icon(

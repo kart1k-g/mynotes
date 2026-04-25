@@ -6,3 +6,5 @@ const tagsFieldName = "tags";
 const searchableTextFieldName = "searchable_text";
 const updatedAtFieldName = "updated_at";
 const isArchivedFieldName = "is_archived";
+const archivedTagsListFieldName = "archived_tags";
+const archivedTagTimesFieldName = "archived_tag_times";
