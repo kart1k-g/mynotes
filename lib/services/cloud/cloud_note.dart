@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mynotes/features/notes/domain/note_text_codec.dart';
+import 'package:mynotes/utilites/notes/note_text_codec.dart';
 import 'package:mynotes/services/cloud/cloud_storage_constants.dart';
 
 class CloudNote {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mynotes/features/notes/domain/note_text_codec.dart';
-import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
+import 'package:mynotes/utilites/notes/note_text_codec.dart';
+import 'package:mynotes/constants/mynotes_theme.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 
 String _relativeTime(DateTime? time) {

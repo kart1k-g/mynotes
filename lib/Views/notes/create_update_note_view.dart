@@ -3,9 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
-import 'package:mynotes/features/notes/domain/note_text_codec.dart';
-import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
-import 'package:mynotes/features/notes/presentation/widgets/note_card.dart';
+import 'package:mynotes/utilites/notes/note_text_codec.dart';
+import 'package:mynotes/constants/mynotes_theme.dart';
+import 'package:mynotes/Views/notes/widgets/note_card.dart';
 import 'package:mynotes/services/auth/firebase_auth_service.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 import 'package:mynotes/services/cloud/firebase_cloud_storage.dart';

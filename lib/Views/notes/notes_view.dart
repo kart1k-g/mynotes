@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mynotes/Views/notes/notes_list_view.dart';
-import 'package:mynotes/Views/notes/tags_view.dart';
+import 'package:mynotes/Views/tags_view.dart';
+import 'package:mynotes/Views/notes/widgets/homepage_choice_chips.dart';
+import 'package:mynotes/Views/notes/widgets/view_toggle_icon.dart';
 import 'package:mynotes/constants/routes.dart';
 import 'package:mynotes/enums/menu_actions.dart';
-import 'package:mynotes/features/notes/presentation/archive_view.dart';
-import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
+import 'package:mynotes/constants/mynotes_theme.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
 import 'package:mynotes/services/auth/firebase_auth_service.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
@@ -106,7 +107,7 @@ class _NotesViewStateState extends State<NotesViewState> {
                         final selectedTag = await Navigator.of(context)
                             .push<String>(
                               MaterialPageRoute(
-                                builder: (_) => TagsScreen(
+                                builder: (_) => TagsView(
                                   notes: allNotes.toList(),
                                   initialSelectedTag: _selectedTagFilter,
                                   initialSearchQuery: initialSearchQuery,
@@ -307,111 +308,28 @@ class _NotesViewStateState extends State<NotesViewState> {
                                 Expanded(
                                   child: SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        ChoiceChip(
-                                          label: const Text('All Notes'),
-                                          selected: !_recentOnly,
-                                          onSelected: (_) {
-                                            setState(() => _recentOnly = false);
-                                          },
-                                          selectedColor: const Color(
-                                            0xFFE8EEF5,
-                                          ).withValues(alpha: 0.9),
-                                          labelStyle: TextStyle(
-                                            color: !_recentOnly
-                                                ? MyNotesColors.charcoal
-                                                : MyNotesColors.muted,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          showCheckmark: false,
-                                          side: const BorderSide(
-                                            color: MyNotesColors.divider,
-                                            width: 0.5,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ChoiceChip(
-                                          label: const Text('Recent'),
-                                          selected: _recentOnly,
-                                          onSelected: (_) {
-                                            setState(() => _recentOnly = true);
-                                          },
-                                          selectedColor: const Color(
-                                            0xFFE8EEF5,
-                                          ).withValues(alpha: 0.9),
-                                          labelStyle: TextStyle(
-                                            color: _recentOnly
-                                                ? MyNotesColors.charcoal
-                                                : MyNotesColors.muted,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          showCheckmark: false,
-                                          side: const BorderSide(
-                                            color: MyNotesColors.divider,
-                                            width: 0.5,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ChoiceChip(
-                                          avatar: const Icon(
-                                            Icons.sell_outlined,
-                                            size: 16,
-                                            color: MyNotesColors.muted,
-                                          ),
-                                          avatarBoxConstraints:
-                                              const BoxConstraints(
-                                                minWidth: 18,
-                                                minHeight: 18,
-                                              ),
-                                          label: const Text('Tags'),
-                                          selected: false,
-                                          onSelected: (_) =>
-                                              openTagsManagement(),
-                                          showCheckmark: false,
-                                          side: const BorderSide(
-                                            color: MyNotesColors.divider,
-                                            width: 0.5,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ChoiceChip(
-                                          avatar: const Icon(
-                                            Icons.archive_outlined,
-                                            size: 16,
-                                            color: MyNotesColors.muted,
-                                          ),
-                                          avatarBoxConstraints:
-                                              const BoxConstraints(
-                                                minWidth: 18,
-                                                minHeight: 18,
-                                              ),
-                                          label: const Text('Archive'),
-                                          selected: false,
-                                          onSelected: (_) {
-                                            Navigator.of(
-                                              context,
-                                            ).push(ArchiveScreen.route());
-                                          },
-                                          showCheckmark: false,
-                                          side: const BorderSide(
-                                            color: MyNotesColors.divider,
-                                            width: 0.5,
-                                          ),
-                                        ),
-                                      ],
+                                    child: HomepageChoiceChips(
+                                      recentOnly: _recentOnly,
+                                      selectedTagFilter: _selectedTagFilter,
+                                      onTapAllNotes: (_) {
+                                        setState(() => _recentOnly = false);
+                                      },
+                                      onTapRecent: (_) {
+                                        setState(() => _recentOnly = true);
+                                      },
+                                      openTagsManagement: openTagsManagement,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                _ViewToggleIcon(
+                                ViewToggleIcon(
                                   icon: Icons.view_list_rounded,
                                   selected: !_gridView,
                                   onTap: () =>
                                       setState(() => _gridView = false),
                                 ),
                                 const SizedBox(width: 8),
-                                _ViewToggleIcon(
+                                ViewToggleIcon(
                                   icon: Icons.grid_view_rounded,
                                   selected: _gridView,
                                   onTap: () => setState(() => _gridView = true),
@@ -467,40 +385,6 @@ class _NotesViewStateState extends State<NotesViewState> {
           ),
         );
       },
-    );
-  }
-}
-
-class _ViewToggleIcon extends StatelessWidget {
-  const _ViewToggleIcon({
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected
-          ? MyNotesColors.teal.withValues(alpha: 0.14)
-          : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            size: 22,
-            color: selected ? MyNotesColors.teal : MyNotesColors.muted,
-          ),
-        ),
-      ),
     );
   }
 }

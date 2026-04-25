@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mynotes/Views/notes/widgets/tag_swipe_bg.dart';
+import 'package:mynotes/constants/mynotes_theme.dart';
 import 'package:mynotes/features/notes/domain/note_text_codec.dart';
-import 'package:mynotes/features/notes/presentation/mynotes_theme.dart';
 import 'package:mynotes/services/auth/firebase_auth_service.dart';
 import 'package:mynotes/services/cloud/cloud_note.dart';
 import 'package:mynotes/services/cloud/firebase_cloud_storage.dart';
@@ -471,13 +472,13 @@ class _ArchivedNoteCard extends StatelessWidget {
       direction: state.selectionMode
           ? DismissDirection.none
           : DismissDirection.horizontal,
-      background: _SwipeBg(
+      background: TagSwipeBg(
         alignLeft: true,
         icon: Icons.restore_rounded,
         label: 'Restore',
         color: MyNotesColors.teal,
       ),
-      secondaryBackground: _SwipeBg(
+      secondaryBackground: TagSwipeBg(
         alignLeft: false,
         icon: Icons.delete_forever_rounded,
         label: 'Delete',
@@ -954,13 +955,13 @@ class _ArchivedTagRow extends StatelessWidget {
       direction: state.selectionMode
           ? DismissDirection.none
           : DismissDirection.horizontal,
-      background: _SwipeBg(
+      background: TagSwipeBg(
         alignLeft: true,
         icon: Icons.restore_rounded,
         label: 'Restore',
         color: MyNotesColors.teal,
       ),
-      secondaryBackground: _SwipeBg(
+      secondaryBackground: TagSwipeBg(
         alignLeft: false,
         icon: Icons.delete_forever_rounded,
         label: 'Delete',
@@ -1105,53 +1106,6 @@ class _BulkActionBar extends StatelessWidget {
   }
 }
 
-class _SwipeBg extends StatelessWidget {
-  const _SwipeBg({
-    required this.alignLeft,
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-  final bool alignLeft;
-  final IconData icon;
-  final String label;
-  final Color color;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      padding: EdgeInsets.only(
-        left: alignLeft ? 20 : 0,
-        right: alignLeft ? 0 : 20,
-      ),
-      alignment: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
-      child: Row(
-        mainAxisAlignment: alignLeft
-            ? MainAxisAlignment.start
-            : MainAxisAlignment.end,
-        children: [
-          if (!alignLeft)
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w700),
-            ),
-          if (!alignLeft) const SizedBox(width: 8),
-          Icon(icon, color: color),
-          if (alignLeft) const SizedBox(width: 8),
-          if (alignLeft)
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w700),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 String _relativeTime(DateTime? time) {
   if (time == null) return 'just now';
   final now = DateTime.now();
@@ -1164,9 +1118,11 @@ String _relativeTime(DateTime? time) {
     final w = (diff.inDays / 7).floor();
     return '$w week${w == 1 ? '' : 's'} ago';
   }
-  if (diff.inDays >= 1)
+  if (diff.inDays >= 1) {
     return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
-  if (diff.inHours >= 1)
+  }
+  if (diff.inHours >= 1) {
     return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
+  }
   return '${diff.inMinutes.clamp(1, 59)} min ago';
 }
