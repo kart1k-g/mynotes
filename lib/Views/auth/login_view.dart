@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mynotes/Views/widgets/auth_input_decoration.dart';
-import 'package:mynotes/Views/widgets/auth_primary_btn.dart';
-import 'package:mynotes/Views/widgets/auth_secondary_btn.dart';
-import 'package:mynotes/Views/widgets/auth_section_divider.dart';
+import 'package:mynotes/Views/auth/widgets/auth_pages_redirect.dart';
+import 'package:mynotes/Views/auth/widgets/auth_primary_btn.dart';
+import 'package:mynotes/Views/auth/widgets/auth_secondary_btn.dart';
+import 'package:mynotes/Views/auth/widgets/auth_section_divider.dart';
 import 'package:mynotes/utilites/cards/inline_alert_card.dart';
 import 'package:mynotes/enums/auth_providers_types.dart';
-import 'package:mynotes/Views/widgets/auth_ui.dart';
+import 'package:mynotes/Views/auth/widgets/auth_ui.dart';
 import 'package:mynotes/services/auth/auth_exceptions.dart';
 import 'package:mynotes/services/auth/bloc/auth_bloc.dart';
+import 'package:mynotes/Views/auth/widgets/auth_input.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -107,38 +108,32 @@ class _LoginViewState extends State<LoginView> {
           const SizedBox(height: 24),
           const AuthSectionDivider(label: 'OR'),
           const SizedBox(height: 18),
-          TextField(
+          AuthInputField(
             controller: _email,
-            autocorrect: false,
+            label: 'Email Address',
+            hintText: 'name@email.com',
+            icon: Icons.mail_outline_rounded,
             keyboardType: TextInputType.emailAddress,
-            decoration: authInputDecoration(
-              label: 'Email Address',
-              hintText: 'name@email.com',
-              icon: Icons.mail_outline_rounded,
-            ),
           ),
           const SizedBox(height: 18),
-          TextField(
+          AuthInputField(
             controller: _password,
+            label: "Password",
+            hintText: "********",
+            icon: Icons.lock_outline_rounded,
             obscureText: _isPasswordHidden,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: authInputDecoration(
-              label: 'Password',
-              hintText: '********',
-              icon: Icons.lock_outline_rounded,
-              suffixIcon: IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isPasswordHidden = !_isPasswordHidden;
-                  });
-                },
-                icon: Icon(
-                  _isPasswordHidden
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: const Color(0xFF99A9BF),
-                ),
+            enableSuggestion: false,
+            suffixIcon: IconButton(
+              onPressed: () {
+                setState(() {
+                  _isPasswordHidden = !_isPasswordHidden;
+                });
+              },
+              icon: Icon(
+                _isPasswordHidden
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: const Color(0xFF99A9BF),
               ),
             ),
           ),
@@ -188,29 +183,11 @@ class _LoginViewState extends State<LoginView> {
             },
           ),
           const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'New to LeafNotes? ',
-                style: TextStyle(color: Color(0xFF506482), fontSize: 16),
-              ),
-              TextButton(
-                onPressed: () {
-                  context.read<AuthBloc>().add(
-                    AuthLogOutRequested(displayRegisterView: true),
-                  );
-                },
-                child: const Text(
-                  'Sign Up',
-                  style: TextStyle(
-                    color: Color(0xFF009C8A),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 19,
-                  ),
-                ),
-              ),
-            ],
+          AuthPagesRedirect(
+            text: 'New to LeafNotes? ',
+            redirectText: 'Sign Up',
+            pageContext: context,
+            displayRegisterView: true,
           ),
         ],
       ),
